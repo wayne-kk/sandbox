@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  sandbox:
+    image: node:18
+    working_dir: /app
+    volumes:
+      - ./sandbox:/app
+    ports:
+      - "3001:3001"
+    command: tail -f /dev/null 

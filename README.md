@@ -1,36 +1,121 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# V0 Sandbox - 在线代码编辑器
 
-## Getting Started
+支持运行完整的 Next.js 和 React 项目的在线代码编辑器。
 
-First, run the development server:
+## 功能特性
+
+- 🎨 **Monaco 编辑器**: 基于 VS Code 的强大代码编辑体验
+- 📁 **文件管理**: 支持多文件编辑和项目结构管理
+- 🐳 **Docker 沙箱**: 安全隔离的项目运行环境
+- ⚡ **实时预览**: 即时查看项目运行结果
+- 💾 **自动保存**: 编辑时自动保存文件
+
+## 技术栈
+
+- **前端**: Next.js 14, React 18, TypeScript, Tailwind CSS
+- **编辑器**: Monaco Editor
+- **容器化**: Docker
+- **运行时**: Node.js 18
+
+## 快速开始
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 启动开发服务器
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+访问 [http://localhost:3000](http://localhost:3000) 查看应用。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Docker 环境（可选）
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+确保 Docker 已安装并运行：
 
-## Learn More
+```bash
+docker pull node:18
+```
 
-To learn more about Next.js, take a look at the following resources:
+使用 Docker Compose:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+docker-compose up
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 使用说明
 
-## Deploy on Vercel
+1. 访问首页，点击"开始编码"进入编辑器
+2. 在左侧文件浏览器中选择要编辑的文件
+3. 在中央编辑器中编写代码（自动保存）
+4. 点击终端中的"运行项目"按钮启动项目
+5. 查看终端输出获取项目访问地址
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 项目结构
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+v0-sandbox/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── api/sandbox/        # 沙箱 API
+│   │   ├── editor/             # 编辑器页面
+│   │   ├── page.tsx            # 首页
+│   │   └── layout.tsx          # 布局
+│   ├── components/             # React 组件
+│   │   └── Editor/             # 编辑器组件
+│   └── lib/                    # 工具库
+├── sandbox/                    # 沙箱项目文件
+├── docker-compose.yml          # Docker 配置
+└── Dockerfile                  # Docker 镜像
+```
+
+## API 接口
+
+### 保存文件
+
+```
+POST /api/sandbox/save
+```
+
+请求体:
+```json
+{
+  "fileName": "app/page.tsx",
+  "content": "export default function..."
+}
+```
+
+### 运行项目
+
+```
+POST /api/sandbox/run
+```
+
+请求体:
+```json
+{
+  "type": "nextjs"
+}
+```
+
+## 开发计划
+
+- [ ] 支持更多项目模板
+- [ ] 添加包管理功能
+- [ ] 实现多用户支持
+- [ ] 集成 WebSocket 实时协作
+- [ ] 添加代码格式化和语法检查
+
+## 注意事项
+
+- 确保 Docker 已安装并运行（用于项目执行）
+- 沙箱项目运行在端口 3001
+- 文件自动保存到 `sandbox/` 目录
+
+## License
+
+MIT
