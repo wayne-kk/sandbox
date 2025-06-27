@@ -37,6 +37,18 @@ export class DockerManager {
     }
 
     /**
+     * 检查 Docker 守护进程是否运行
+     */
+    async isDockerDaemonRunning(): Promise<boolean> {
+        try {
+            await execAsync('docker ps');
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
      * 构建沙箱镜像
      */
     async buildSandboxImage(): Promise<boolean> {
@@ -82,9 +94,18 @@ CMD ["tail", "-f", "/dev/null"]
      * 创建并启动沙箱容器
      */
     async createContainer(projectPath: string): Promise<string> {
-        // 停止现有容器
-        await this.stopContainer();
-        await this.removeContainer();
+        // 检查 Docker 是否可用
+        if (!await this.isDockerAvailable()) {
+            throw new Error('Docker 未安装。请安装 Docker Desktop 并重启应用。');
+        }
+
+        // 检查 Docker 守护进程是否运行
+        if (!await this.isDockerDaemonRunning()) {
+            throw new Error('Docker 守护进程未运行。请启动 Docker Desktop 应用程序，等待其完全启动后再试。\n\n🔧 解决步骤：\n1. 打开 Docker Desktop 应用\n2. 等待应用完全加载（状态栏显示绿色）\n3. 重新尝试创建容器');
+        }
+
+        // 强制清理现有容器
+        await this.forceCleanupContainer();
 
         console.log('创建新的沙箱容器...');
 
@@ -183,14 +204,36 @@ CMD ["tail", "-f", "/dev/null"]
         onClose: (code: number) => void
     ): Promise<void> {
         return new Promise((resolve) => {
+            // 对于长时间运行的命令，添加nohup和后台运行
+            const isLongRunning = command.includes('yarn dev') || command.includes('npm run dev') || command.includes('next dev');
+
+            let actualCommand = command;
+            if (isLongRunning) {
+                // 长时间运行的命令在后台运行，并重定向输出
+                actualCommand = `nohup ${command} > /tmp/dev-output.log 2>&1 & echo "Started in background with PID: $!"`;
+            }
+
             const process = spawn('docker', [
                 'exec',
                 '-i',
                 this.containerName,
                 'sh',
                 '-c',
-                command
+                actualCommand
             ]);
+
+            // 设置超时机制
+            const timeout = setTimeout(() => {
+                if (!process.killed) {
+                    onError('命令执行超时，正在终止...');
+                    process.kill('SIGTERM');
+                    setTimeout(() => {
+                        if (!process.killed) {
+                            process.kill('SIGKILL');
+                        }
+                    }, 5000);
+                }
+            }, isLongRunning ? 10000 : 60000); // 长时间命令10秒，普通命令60秒
 
             process.stdout.on('data', (data) => {
                 onData(data.toString());
@@ -201,11 +244,27 @@ CMD ["tail", "-f", "/dev/null"]
             });
 
             process.on('close', (code) => {
+                clearTimeout(timeout);
+
+                if (isLongRunning && code === 0) {
+                    // 对于后台命令，检查是否真的启动了
+                    setTimeout(() => {
+                        this.execInContainer('ps aux | grep -E "(yarn|next)" | grep -v grep').then(result => {
+                            if (result.stdout.trim()) {
+                                onData('\n✅ 开发服务器已在后台启动\n');
+                                onData('💡 可以访问 http://localhost:3001 查看应用\n');
+                                onData('🔍 使用 "ps aux | grep node" 查看运行状态\n');
+                            }
+                        });
+                    }, 2000);
+                }
+
                 onClose(code || 0);
                 resolve();
             });
 
             process.on('error', (error) => {
+                clearTimeout(timeout);
                 onError(error.message);
                 onClose(1);
                 resolve();
@@ -243,10 +302,14 @@ CMD ["tail", "-f", "/dev/null"]
      */
     async stopContainer(): Promise<void> {
         try {
-            await execAsync(`docker stop ${this.containerName}`);
-            console.log('容器已停止');
+            // 检查容器是否存在
+            const { stdout } = await execAsync(`docker ps -a -q --filter name=${this.containerName}`);
+            if (stdout.trim()) {
+                await execAsync(`docker stop ${this.containerName}`, { timeout: 10000 });
+                console.log('容器已停止');
+            }
         } catch (error) {
-            // 容器可能不存在或已停止，忽略错误
+            console.log('停止容器时出现问题，但继续执行:', error instanceof Error ? error.message : error);
         }
     }
 
@@ -255,10 +318,27 @@ CMD ["tail", "-f", "/dev/null"]
      */
     async removeContainer(): Promise<void> {
         try {
-            await execAsync(`docker rm ${this.containerName}`);
-            console.log('容器已删除');
+            // 检查容器是否存在
+            const { stdout } = await execAsync(`docker ps -a -q --filter name=${this.containerName}`);
+            if (stdout.trim()) {
+                await execAsync(`docker rm -f ${this.containerName}`, { timeout: 10000 });
+                console.log('容器已删除');
+            }
         } catch (error) {
-            // 容器可能不存在，忽略错误
+            console.log('删除容器时出现问题，但继续执行:', error instanceof Error ? error.message : error);
+        }
+    }
+
+    /**
+     * 强制清理容器（忽略所有错误）
+     */
+    async forceCleanupContainer(): Promise<void> {
+        try {
+            // 强制停止并删除容器，忽略所有错误
+            await execAsync(`docker rm -f ${this.containerName} 2>/dev/null || true`, { timeout: 10000 });
+            console.log('容器清理完成');
+        } catch (error) {
+            console.log('容器清理时出现问题，继续执行:', error instanceof Error ? error.message : error);
         }
     }
 

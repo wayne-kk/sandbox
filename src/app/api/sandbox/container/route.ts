@@ -7,10 +7,23 @@ const dockerManager = new DockerManager();
 export async function GET() {
     try {
         const isDockerAvailable = await dockerManager.isDockerAvailable();
+        const isDaemonRunning = await dockerManager.isDockerDaemonRunning();
+
         if (!isDockerAvailable) {
             return NextResponse.json({
                 success: false,
-                error: 'Docker 不可用'
+                error: 'Docker 不可用',
+                dockerAvailable: false,
+                daemonRunning: false
+            }, { status: 500 });
+        }
+
+        if (!isDaemonRunning) {
+            return NextResponse.json({
+                success: false,
+                error: 'Docker 守护进程未运行，请启动 Docker Desktop',
+                dockerAvailable: true,
+                daemonRunning: false
             }, { status: 500 });
         }
 
@@ -21,7 +34,8 @@ export async function GET() {
             success: true,
             container: info,
             isRunning,
-            dockerAvailable: isDockerAvailable
+            dockerAvailable: isDockerAvailable,
+            daemonRunning: isDaemonRunning
         });
     } catch (error) {
         console.error('获取容器状态失败:', error);
@@ -37,10 +51,19 @@ export async function POST(request: Request) {
         const { action, projectPath } = await request.json();
 
         const isDockerAvailable = await dockerManager.isDockerAvailable();
+        const isDaemonRunning = await dockerManager.isDockerDaemonRunning();
+
         if (!isDockerAvailable) {
             return NextResponse.json({
                 success: false,
-                error: 'Docker 不可用，请确保 Docker 已安装并运行'
+                error: 'Docker 未安装，请安装 Docker Desktop'
+            }, { status: 500 });
+        }
+
+        if (!isDaemonRunning) {
+            return NextResponse.json({
+                success: false,
+                error: 'Docker 守护进程未运行，请启动 Docker Desktop 应用程序'
             }, { status: 500 });
         }
 

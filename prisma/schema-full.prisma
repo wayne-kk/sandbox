@@ -1,0 +1,349 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ===================================
+// 用户表
+// ===================================
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  username         String   @unique
+  displayName      String?  @map("display_name")
+  avatarUrl        String?  @map("avatar_url")
+  planType         PlanType @default(FREE) @map("plan_type")
+  storageQuotaMb   Int      @default(100) @map("storage_quota_mb")
+  storageUsedMb    Float    @default(0) @map("storage_used_mb")
+  isActive         Boolean  @default(true) @map("is_active")
+  settings         Json     @default("{}")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  lastActiveAt     DateTime @default(now()) @map("last_active_at")
+
+  // 关联关系
+  projects         UserProject[]
+  templates        Template[]
+  projectVersions  ProjectVersion[]
+  collaborations   ProjectCollaborator[]
+  activities       ProjectActivity[]
+  invitations      ProjectCollaborator[] @relation("InvitedBy")
+  sessions         UserSession[]
+
+  @@map("users")
+}
+
+enum PlanType {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ===================================
+// 用户会话
+// ===================================
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  sessionId String   @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+// ===================================
+// 用户项目 - 基于模板创建的项目实例
+// ===================================
+model UserProject {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   // 项目名称，如 "我的React应用"
+  description String?  // 项目描述
+  framework   String   @default("react") // react, vue, next, vanilla
+  template    String   @default("default") // 基于哪个模板创建
+  isPublic    Boolean  @default(false) // 是否公开
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastOpenAt  DateTime @default(now()) // 最后打开时间
+
+  // 关联用户和文件
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files ProjectFile[]
+
+  @@map("user_projects")
+  @@index([userId, lastOpenAt])
+}
+
+// ===================================
+// 模板表
+// ===================================
+model Template {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String   @map("display_name")
+  description String?
+  category    String
+  framework   String
+  language    String
+  tags        String[]
+  thumbnailUrl String? @map("thumbnail_url")
+  isPublic    Boolean  @default(true) @map("is_public")
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  usageCount  Int      @default(0) @map("usage_count")
+  config      Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isActive    Boolean  @default(true) // 是否启用
+  sortOrder   Int      @default(0) // 排序
+
+  // 关联关系
+  createdBy   String?  @map("created_by")
+  creator     User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  files       TemplateFile[]
+  projects    UserProject[]
+
+  @@index([category])
+  @@index([framework])
+  @@index([isPublic])
+  @@index([isFeatured])
+  @@map("templates")
+}
+
+// ===================================
+// 模板文件表
+// ===================================
+model TemplateFile {
+  id           String   @id @default(cuid())
+  templateId   String   @map("template_id")
+  filePath     String   @map("file_path")
+  content      String
+  fileType     String   @map("file_type")
+  isEntryPoint Boolean  @default(false) @map("is_entry_point")
+  isEditable   Boolean  @default(true) @map("is_editable")
+  orderIndex   Int      @default(0) @map("order_index")
+  isReadonly   Boolean  @default(false) // 是否只读
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // 关联关系
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, filePath])
+  @@index([templateId])
+  @@map("template_files")
+}
+
+// ===================================
+// 项目表
+// ===================================
+model Project {
+  id                   String        @id @default(cuid())
+  userId               String        @map("user_id")
+  templateId           String?       @map("template_id")
+  name                 String
+  description          String?
+  isPublic             Boolean       @default(false) @map("is_public")
+  isArchived           Boolean       @default(false) @map("is_archived")
+  thumbnailUrl         String?       @map("thumbnail_url")
+  framework            String
+  language             String
+  dependencies         Json          @default("{}")
+  devDependencies      Json          @default("{}") @map("dev_dependencies")
+  buildSettings        Json          @default("{}") @map("build_settings")
+  environmentVariables Json          @default("{}") @map("environment_variables")
+  viewCount            Int           @default(0) @map("view_count")
+  forkCount            Int           @default(0) @map("fork_count")
+  likeCount            Int           @default(0) @map("like_count")
+  forkedFromId         String?       @map("forked_from_id")
+  status               ProjectStatus @default(ACTIVE)
+  storageUsedMb        Float         @default(0) @map("storage_used_mb")
+  lastAccessedAt       DateTime      @default(now()) @map("last_accessed_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  // 关联关系
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template       Template?             @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  forkedFrom     Project?              @relation("ProjectForks", fields: [forkedFromId], references: [id], onDelete: SetNull)
+  forks          Project[]             @relation("ProjectForks")
+  files          ProjectFile[]
+  versions       ProjectVersion[]
+  collaborators  ProjectCollaborator[]
+  activities     ProjectActivity[]
+
+  @@index([userId])
+  @@index([templateId])
+  @@index([isPublic])
+  @@index([status])
+  @@index([framework])
+  @@index([createdAt])
+  @@index([lastAccessedAt])
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  ACTIVE
+  BUILDING
+  ERROR
+  ARCHIVED
+}
+
+// ===================================
+// 项目文件表
+// ===================================
+model ProjectFile {
+  id             String   @id @default(cuid())
+  projectId      String   @map("project_id")
+  filePath       String   @map("file_path")
+  content        String
+  fileType       String   @map("file_type")
+  fileSizeBytes  Int      @map("file_size_bytes")
+  contentHash    String   @map("content_hash")
+  isBinary       Boolean  @default(false) @map("is_binary")
+  encoding       String   @default("utf8")
+  lastAccessedAt DateTime @default(now()) @map("last_accessed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  language       String?  // 文件语言类型
+
+  // 关联关系
+  project UserProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, filePath])
+  @@index([projectId])
+  @@index([contentHash])
+  @@index([updatedAt])
+  @@map("project_files")
+}
+
+// ===================================
+// 项目版本表
+// ===================================
+model ProjectVersion {
+  id               String   @id @default(cuid())
+  projectId        String   @map("project_id")
+  versionNumber    Int      @map("version_number")
+  description      String?
+  tagName          String?  @map("tag_name")
+  createdBy        String   @map("created_by")
+  snapshotData     Json     @map("snapshot_data")
+  changesSummary   Json     @default("{}") @map("changes_summary")
+  parentVersionId  String?  @map("parent_version_id")
+  isMajor          Boolean  @default(false) @map("is_major")
+  isPublished      Boolean  @default(false) @map("is_published")
+  fileCount        Int      @default(0) @map("file_count")
+  totalSizeBytes   Int      @default(0) @map("total_size_bytes")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // 关联关系
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creator       User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  parentVersion ProjectVersion?  @relation("VersionHistory", fields: [parentVersionId], references: [id], onDelete: SetNull)
+  childVersions ProjectVersion[] @relation("VersionHistory")
+
+  @@unique([projectId, versionNumber])
+  @@index([projectId])
+  @@index([createdBy])
+  @@index([tagName])
+  @@index([createdAt])
+  @@map("project_versions")
+}
+
+// ===================================
+// 项目协作表
+// ===================================
+model ProjectCollaborator {
+  id           String              @id @default(cuid())
+  projectId    String              @map("project_id")
+  userId       String              @map("user_id")
+  role         CollaboratorRole    @default(VIEWER)
+  permissions  Json                @default("{}")
+  invitedBy    String?             @map("invited_by")
+  invitedAt    DateTime            @default(now()) @map("invited_at")
+  acceptedAt   DateTime?           @map("accepted_at")
+  lastActiveAt DateTime?           @map("last_active_at")
+  isActive     Boolean             @default(true) @map("is_active")
+
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inviter User?   @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_collaborators")
+}
+
+enum CollaboratorRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+// ===================================
+// 项目活动日志表
+// ===================================
+model ProjectActivity {
+  id           String   @id @default(cuid())
+  projectId    String   @map("project_id")
+  userId       String?  @map("user_id")
+  activityType String   @map("activity_type")
+  description  String
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // 关联关系
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([activityType])
+  @@index([createdAt])
+  @@map("project_activities")
+}
+
+// ===================================
+// 系统配置表
+// ===================================
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([key])
+  @@map("system_settings")
+}
+
+// ===================================
+// 文件分享
+// ===================================
+model SharedProject {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  shareCode String   @unique // 分享码
+  password  String?  // 访问密码（可选）
+  expiresAt DateTime? // 过期时间（可选）
+  viewCount Int      @default(0) // 查看次数
+  createdAt DateTime @default(now())
+
+  @@map("shared_projects")
+  @@index([shareCode])
+} 

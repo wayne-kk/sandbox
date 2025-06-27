@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { DockerManager } from "@/lib/docker";
 import fs from "fs/promises";
 import path from "path";
@@ -12,139 +12,128 @@ export interface FileNode {
     children?: FileNode[];
 }
 
-export async function GET(request: Request) {
+interface FileItem {
+    path: string;
+    content: string;
+    isDirectory: boolean;
+}
+
+async function readDirectoryRecursive(dirPath: string, basePath: string = ''): Promise<{ [key: string]: string }> {
+    const files: { [key: string]: string } = {};
+
     try {
-        const { searchParams } = new URL(request.url);
-        const useContainer = searchParams.get('container') === 'true';
+      const items = await fs.readdir(dirPath, { withFileTypes: true });
 
-        if (useContainer) {
-            // 从容器中获取文件列表
-            const isRunning = await dockerManager.isContainerRunning();
-            if (!isRunning) {
-                return NextResponse.json({
-                    success: false,
-                    error: '容器未运行'
-                }, { status: 400 });
-            }
+      for (const item of items) {
+          const fullPath = path.join(dirPath, item.name);
+          const relativePath = basePath ? `${basePath}/${item.name}` : item.name;
 
-            const files = await dockerManager.listFiles();
-            const fileTree = buildFileTree(files);
+          // 跳过不需要的目录和文件
+          if (item.name.startsWith('.') ||
+              item.name === 'node_modules' ||
+              item.name === '.next' ||
+              item.name === 'dist' ||
+              item.name === 'build') {
+              continue;
+          }
 
-            return NextResponse.json({
-                success: true,
-                files: fileTree,
-                source: 'container'
-            });
+        if (item.isDirectory()) {
+            // 递归读取子目录
+            const subFiles = await readDirectoryRecursive(fullPath, relativePath);
+            Object.assign(files, subFiles);
         } else {
-            // 从本地文件系统获取（主要用于备份）
-            const sandboxPath = path.join(process.cwd(), 'sandbox');
-            const files = await scanDirectory(sandboxPath);
+          // 只读取文本文件
+          const ext = path.extname(item.name).toLowerCase();
+          const textExtensions = ['.tsx', '.ts', '.jsx', '.js', '.css', '.scss', '.html', '.md', '.json', '.txt', '.yml', '.yaml'];
 
-            return NextResponse.json({
-                success: true,
-                files,
-                source: 'local'
-            });
-        }
+              if (textExtensions.includes(ext)) {
+                  try {
+                      const content = await fs.readFile(fullPath, 'utf-8');
+                      files[relativePath] = content;
+                  } catch (error) {
+                      console.error(`Error reading file ${fullPath}:`, error);
+                  }
+              }
+          }
+      }
+  } catch (error) {
+      console.error(`Error reading directory ${dirPath}:`, error);
+  }
+
+    return files;
+}
+
+export async function GET(request: NextRequest) {
+    try {
+      const sandboxPath = path.join(process.cwd(), 'sandbox');
+
+      // 检查sandbox目录是否存在
+      try {
+          await fs.access(sandboxPath);
+      } catch {
+          return NextResponse.json(
+              { success: false, error: 'Sandbox directory not found' },
+              { status: 404 }
+          );
+      }
+
+      // 递归读取所有文件
+      const files = await readDirectoryRecursive(sandboxPath);
+
+      return NextResponse.json({
+          success: true,
+        files,
+        count: Object.keys(files).length
+    });
+
     } catch (error) {
-        console.error('获取文件列表失败:', error);
-        return NextResponse.json({
-            success: false,
-            error: error instanceof Error ? error.message : '未知错误'
-        }, { status: 500 });
+        console.error('Error reading sandbox files:', error);
+        return NextResponse.json(
+            { success: false, error: 'Failed to read sandbox files' },
+            { status: 500 }
+        );
     }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
     try {
-        const { action, filePath, content, useContainer = true } = await request.json();
+        const { files } = await request.json();
 
-        if (action === 'read') {
-            if (useContainer) {
-                // 从容器中读取文件
-                const isRunning = await dockerManager.isContainerRunning();
-                if (!isRunning) {
-                    return NextResponse.json({
-                        success: false,
-                        error: '容器未运行'
-                    }, { status: 400 });
-                }
-
-                const fileContent = await dockerManager.readFileFromContainer(filePath);
-                return NextResponse.json({
-                    success: true,
-                    content: fileContent,
-                    filePath,
-                    source: 'container'
-                });
-            } else {
-                // 从本地读取
-                const fullPath = path.join(process.cwd(), 'sandbox', filePath);
-                const fileContent = await fs.readFile(fullPath, 'utf-8');
-                return NextResponse.json({
-                    success: true,
-                    content: fileContent,
-                    filePath,
-                    source: 'local'
-                });
-            }
+        if (!files || typeof files !== 'object') {
+            return NextResponse.json(
+                { success: false, error: 'Invalid files data' },
+                { status: 400 }
+            );
         }
 
-        if (action === 'write') {
-            if (useContainer) {
-                // 写入到容器
-                const isRunning = await dockerManager.isContainerRunning();
-                if (!isRunning) {
-                    return NextResponse.json({
-                        success: false,
-                        error: '容器未运行'
-                    }, { status: 400 });
-                }
+      const sandboxPath = path.join(process.cwd(), 'sandbox');
 
-                await dockerManager.writeFileToContainer(filePath, content);
+      // 写入文件
+      for (const [filePath, content] of Object.entries(files)) {
+          if (typeof content !== 'string') continue;
 
-                // 同时写入本地作为备份
-                try {
-                    const localPath = path.join(process.cwd(), 'sandbox', filePath);
-                    await fs.mkdir(path.dirname(localPath), { recursive: true });
-                    await fs.writeFile(localPath, content, 'utf-8');
-                } catch (error) {
-                    console.warn('本地备份写入失败:', error);
-                }
+        const fullPath = path.join(sandboxPath, filePath);
+        const dir = path.dirname(fullPath);
 
-                return NextResponse.json({
-                    success: true,
-                    message: '文件保存成功',
-                    filePath,
-                    target: 'container'
-                });
-            } else {
-                // 写入到本地
-                const fullPath = path.join(process.cwd(), 'sandbox', filePath);
-                await fs.mkdir(path.dirname(fullPath), { recursive: true });
-                await fs.writeFile(fullPath, content, 'utf-8');
+        // 确保目录存在
+        await fs.mkdir(dir, { recursive: true });
 
-                return NextResponse.json({
-                    success: true,
-                    message: '文件保存成功',
-                    filePath,
-                    target: 'local'
-                });
-            }
-        }
-
-        return NextResponse.json({
-            success: false,
-            error: '不支持的操作'
-        }, { status: 400 });
-
-    } catch (error) {
-        console.error('文件操作失败:', error);
-        return NextResponse.json({
-            success: false,
-            error: error instanceof Error ? error.message : '未知错误'
-        }, { status: 500 });
+        // 写入文件
+        await fs.writeFile(fullPath, content, 'utf-8');
     }
+
+      return NextResponse.json({
+          success: true,
+        message: `Updated ${Object.keys(files).length} files`
+    });
+
+  } catch (error) {
+      console.error('Error writing sandbox files:', error);
+      return NextResponse.json(
+          { success: false, error: 'Failed to write files' },
+          { status: 500 }
+      );
+  }
 }
 
 // 构建文件树结构

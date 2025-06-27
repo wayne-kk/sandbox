@@ -30,26 +30,45 @@ export async function POST(request: Request) {
                     async start(controller) {
                         const encoder = new TextEncoder();
 
-                        await dockerManager.execInContainerStream(
-                            command,
-                            (data) => {
-                                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'stdout', data })}\n\n`));
-                            },
-                            (error) => {
-                                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'stderr', data: error })}\n\n`));
-                            },
-                            (code) => {
-                                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'exit', code })}\n\n`));
-                                controller.close();
-                            }
-                        );
+                        try {
+                            await dockerManager.execInContainerStream(
+                                command,
+                                (data) => {
+                                    try {
+                                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'stdout', data })}\n\n`));
+                                    } catch (error) {
+                                        console.error('流输出错误:', error);
+                                    }
+                                },
+                                (error) => {
+                                    try {
+                                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'stderr', data: error })}\n\n`));
+                                    } catch (e) {
+                                        console.error('流错误输出错误:', e);
+                                    }
+                                },
+                                (code) => {
+                                    try {
+                                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'exit', code })}\n\n`));
+                                        controller.close();
+                                    } catch (error) {
+                                        console.error('流关闭错误:', error);
+                                        controller.close();
+                                    }
+                                }
+                            );
+                        } catch (error) {
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', data: error instanceof Error ? error.message : String(error) })}\n\n`));
+                            controller.close();
+                        }
                     }
                 }),
                 {
                     headers: {
                         'Content-Type': 'text/event-stream',
-                        'Cache-Control': 'no-cache',
-                        'Connection': 'keep-alive'
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Connection': 'keep-alive',
+                        'Access-Control-Allow-Origin': '*'
                     }
                 }
             );
