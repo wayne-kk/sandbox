@@ -1,67 +1,23 @@
 import { NextResponse } from 'next/server';
-import { DockerManager } from '@/lib/docker';
+import { ProjectManager } from '@/lib/project-manager';
+import { DifyClient } from '@/lib/ai/dify-client';
 
-const dockerManager = new DockerManager();
+const projectManager = ProjectManager.getInstance();
 
-// 模拟AI代码生成（实际项目中替换为真实的AI API调用）
-async function generateCodeWithAI(prompt: string, projectType: 'nextjs' | 'react'): Promise<{
-    files: Array<{ path: string; content: string; }>
-}> {
-    // 这里集成你的AI模型 (GPT-4, Claude, 本地模型等)
-    // 示例返回结构
+// 初始化 Dify 客户端
+function getDifyClient(): DifyClient {
+    const apiEndpoint = process.env.DIFY_API_ENDPOINT;
 
-    if (projectType === 'nextjs') {
-        return {
-            files: [
-                {
-                    path: 'pages/index.tsx',
-                    content: `import React from 'react';
-import Head from 'next/head';
-
-export default function Home() {
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-            <Head>
-                <title>AI生成页面</title>
-            </Head>
-            <div className="container mx-auto px-4 py-8">
-                <h1 className="text-4xl font-bold text-center text-gray-800 mb-8">
-                    ${prompt}
-                </h1>
-                <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
-                    <p className="text-gray-600 text-center">
-                        这是由AI根据你的需求 "${prompt}" 生成的页面
-                    </p>
-                </div>
-            </div>
-        </div>
-    );
-}`
-                },
-                {
-                    path: 'tailwind.config.js',
-                    content: `module.exports = {
-    content: [
-        './pages/**/*.{js,ts,jsx,tsx}',
-        './components/**/*.{js,ts,jsx,tsx}',
-    ],
-    theme: {
-        extend: {},
-    },
-    plugins: [],
-}`
-                }
-            ]
-        };
+    if (!apiEndpoint) {
+        throw new Error('请设置 DIFY_API_ENDPOINT 环境变量');
     }
 
-    // React 版本的生成逻辑...
-    return { files: [] };
+    return DifyClient.getInstance(apiEndpoint);
 }
 
 export async function POST(request: Request) {
     try {
-        const { prompt, projectType = 'nextjs' } = await request.json();
+        const { prompt, projectType = 'nextjs', projectId = 'default-project' } = await request.json();
 
         if (!prompt) {
             return NextResponse.json({
@@ -70,45 +26,92 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        // 1. 使用AI生成代码
-        console.log(`🤖 AI正在生成代码: ${prompt}`);
-        const generatedCode = await generateCodeWithAI(prompt, projectType);
+        console.log(`🤖 开始使用 Dify 生成 UI 代码: ${prompt}`);
 
-        // 2. 检查Docker容器是否运行
-        const isRunning = await dockerManager.isContainerRunning();
-        if (!isRunning) {
-            return NextResponse.json({
-                success: false,
-                error: '请先创建并启动Docker容器'
-            }, { status: 400 });
-        }
+        // 1. 初始化 Dify 客户端
+        const difyClient = getDifyClient();
 
-        // 3. 将生成的代码写入容器
-        const writePromises = generatedCode.files.map(async (file) => {
-            console.log(`📝 写入文件: ${file.path}`);
-            await dockerManager.writeFileToContainer(file.path, file.content);
+        // 2. 使用 Dify 生成代码（包含组件上下文）
+        const generateResult = await difyClient.generateUI(prompt, {
+            projectType,
+            context: `项目ID: ${projectId}, 目标框架: ${projectType}`
         });
 
-        await Promise.all(writePromises);
+        console.log(`✅ Dify 生成完成，共生成 ${generateResult.files.length} 个文件`);
 
-        // 4. 安装依赖（如果有package.json变化）
-        if (generatedCode.files.some(f => f.path === 'package.json')) {
-            console.log('📦 安装新依赖...');
-            await dockerManager.installDependencies();
+        // 3. 将生成的代码写入 sandbox
+        const fileOperations = generateResult.files.map(async (file) => {
+            console.log(`📝 写入文件: ${file.path}`);
+            return projectManager.saveProjectFiles(projectId, {
+                [file.path]: file.content
+            });
+        });
+
+        await Promise.all(fileOperations);
+
+        // 4. 检查是否需要重启项目（如果有配置文件变化）
+        const hasConfigChanges = generateResult.files.some(file =>
+            file.path.includes('package.json') ||
+            file.path.includes('next.config') ||
+            file.path.includes('tailwind.config')
+        );
+
+        if (hasConfigChanges) {
+            console.log('📦 检测到配置文件变化，可能需要重启项目');
         }
 
-        // 5. 触发热重载（Next.js会自动检测文件变化）
-        console.log('🔄 代码已更新，Next.js将自动重载');
+        console.log('🔄 代码已写入 sandbox，项目将自动热重载');
+
+        // 5. 智能演进分析（可选）
+        let evolutionSuggestions = null;
+        try {
+            console.log('🧠 分析代码演进需求...');
+            const evolutionResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/ai/evolve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectId,
+                    generationResult: generateResult,
+                    userIntent: prompt,
+                    autoExecute: false // 不自动执行，只分析
+                })
+            });
+
+            if (evolutionResponse.ok) {
+                const evolutionData = await evolutionResponse.json();
+                evolutionSuggestions = evolutionData.data;
+                console.log('✅ 演进分析完成');
+            }
+        } catch (error) {
+            console.warn('演进分析失败，跳过:', error);
+        }
 
         return NextResponse.json({
             success: true,
-            message: '🎉 AI代码生成完成！',
-            filesGenerated: generatedCode.files.length,
-            files: generatedCode.files.map(f => ({ path: f.path, size: f.content.length }))
+            message: '🎉 AI 代码生成并写入完成！',
+            data: {
+                filesGenerated: generateResult.files.length,
+                files: generateResult.files.map(f => ({
+                    path: f.path,
+                    size: f.content.length,
+                    type: f.type
+                })),
+                description: generateResult.description,
+                features: generateResult.features,
+                dependencies: generateResult.dependencies,
+                hasConfigChanges,
+                conversationId: difyClient.getCurrentConversationId(),
+                // 新增：智能演进建议
+                evolution: evolutionSuggestions ? {
+                    suggestions: evolutionSuggestions.suggestions,
+                    recommendedPrompts: evolutionSuggestions.recommendedPrompts,
+                    stats: evolutionSuggestions.stats
+                } : null
+            }
         });
 
     } catch (error) {
-        console.error('AI代码生成失败:', error);
+        console.error('AI 代码生成失败:', error);
         return NextResponse.json({
             success: false,
             error: error instanceof Error ? error.message : '未知错误'

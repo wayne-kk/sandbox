@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import IntegratedIDE from '@/components/IDE/IntegratedIDE';
+import GitHubProjectSetup from '@/components/IDE/GitHubProjectSetup';
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
+  const [showGitHubSetup, setShowGitHubSetup] = useState(false);
+  const [projectRefreshKey, setProjectRefreshKey] = useState(0);
 
   useEffect(() => {
     // 模拟初始化加载
@@ -40,6 +43,15 @@ export default function Home() {
     }
   };
 
+  // GitHub项目设置处理
+  const handleGitHubProjectSetup = (success: boolean, data?: any) => {
+    if (success) {
+      console.log('✅ GitHub项目设置成功:', data);
+      // 刷新IDE组件以加载新项目
+      setProjectRefreshKey(prev => prev + 1);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-900">
@@ -71,6 +83,22 @@ export default function Home() {
               支持 React / Vue / Vanilla JS
             </div>
             
+            <a
+              href="/ai-generator"
+              className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm transition-colors flex items-center space-x-1"
+            >
+              <span>🤖</span>
+              <span>AI 生成器</span>
+            </a>
+
+            <button
+              onClick={() => setShowGitHubSetup(true)}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors flex items-center space-x-1"
+            >
+              <span>📥</span>
+              <span>从GitHub导入</span>
+            </button>
+            
             <a 
               href="https://github.com/your-repo/v0-sandbox" 
               target="_blank" 
@@ -86,6 +114,7 @@ export default function Home() {
       {/* 主要工作区 - 集成IDE */}
       <main className="flex-1 overflow-hidden">
         <IntegratedIDE
+          key={projectRefreshKey}
           projectId="sandbox-project"
           framework="next"
           onSave={handleFileSave}
@@ -109,6 +138,13 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* GitHub项目设置弹窗 */}
+      <GitHubProjectSetup
+        isVisible={showGitHubSetup}
+        onClose={() => setShowGitHubSetup(false)}
+        onProjectSetup={handleGitHubProjectSetup}
+      />
     </div>
   );
 }

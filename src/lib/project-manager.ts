@@ -3,7 +3,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import { ProjectWebSocketManager } from './project-websocket';
-import { UserProjectService } from './services/user-project.service';
+
+import { GitHubDownloader } from './github-downloader';
 import net from 'net';
 
 export interface ProjectStatus {
@@ -32,14 +33,16 @@ export class ProjectManager {
     private static instance: ProjectManager;
     private projects: Map<string, ProjectInstance> = new Map();
     private wsManager: ProjectWebSocketManager;
-    private userProjectService: UserProjectService;
+
+    private githubDownloader: GitHubDownloader;
     private readonly tempDir = path.join(process.cwd(), 'temp', 'projects');
     private cleanupScheduler: NodeJS.Timeout | null = null;
     private pendingCleanups: Map<string, { path: string; scheduledAt: Date }> = new Map();
 
     private constructor() {
         this.wsManager = ProjectWebSocketManager.getInstance();
-        this.userProjectService = UserProjectService.getInstance();
+
+        this.githubDownloader = GitHubDownloader.getInstance();
         this.ensureTempDir();
         this.startCleanupScheduler();
     }
@@ -59,7 +62,7 @@ export class ProjectManager {
         }
     }
 
-    async startProject(projectId: string, userId?: string): Promise<ProjectStatus> {
+    async startProject(projectId: string): Promise<ProjectStatus> {
         try {
             let instance = this.projects.get(projectId);
 
@@ -73,25 +76,11 @@ export class ProjectManager {
             }
 
             let workingDir: string;
-            let isUserProject = false;
+
             let framework = 'react';
 
-            // 检查是否是用户项目
-            if (userId) {
-                const userProject = await this.userProjectService.getProject(userId, projectId);
-                if (userProject) {
-                    // 是用户项目，需要创建临时工作目录
-                    workingDir = await this.createUserProjectWorkspace(projectId, userProject.files);
-                    isUserProject = true;
-                    framework = userProject.project.framework;
-                } else {
-                    // 不是用户项目，使用默认sandbox
-                    workingDir = path.join(process.cwd(), 'sandbox');
-                }
-            } else {
-                // 没有userId，使用默认sandbox
-                workingDir = path.join(process.cwd(), 'sandbox');
-            }
+            // 使用默认sandbox目录
+            workingDir = path.join(process.cwd(), 'sandbox');
 
             const status: ProjectStatus = {
                 id: projectId,
@@ -106,8 +95,7 @@ export class ProjectManager {
                 id: projectId,
                 status,
                 workingDir,
-                isUserProject,
-                userId
+                isUserProject: false
             };
 
             this.projects.set(projectId, instance);
@@ -141,62 +129,7 @@ export class ProjectManager {
         }
     }
 
-    /**
-     * 为用户项目创建临时工作空间
-     */
-    private async createUserProjectWorkspace(projectId: string, files: { [filePath: string]: string }): Promise<string> {
-        const workspaceId = `${projectId}_${randomUUID().slice(0, 8)}`;
-        const workspacePath = path.join(this.tempDir, workspaceId);
 
-        try {
-            // 创建工作空间目录
-            await fs.mkdir(workspacePath, { recursive: true });
-
-            // 写入所有文件
-            for (const [filePath, content] of Object.entries(files)) {
-                const fullPath = path.join(workspacePath, filePath);
-                const dirPath = path.dirname(fullPath);
-
-                // 确保目录存在
-                await fs.mkdir(dirPath, { recursive: true });
-
-                // 写入文件
-                await fs.writeFile(fullPath, content, 'utf-8');
-            }
-
-            // 如果没有package.json，从模板复制一个
-            const packageJsonPath = path.join(workspacePath, 'package.json');
-            try {
-                await fs.access(packageJsonPath);
-            } catch {
-                // package.json不存在，从sandbox复制
-                const templatePackageJson = path.join(process.cwd(), 'sandbox', 'package.json');
-                try {
-                    const packageContent = await fs.readFile(templatePackageJson, 'utf-8');
-                    await fs.writeFile(packageJsonPath, packageContent);
-                } catch (error) {
-                    console.warn('复制package.json失败:', error);
-                }
-            }
-
-            // 检查是否需要安装依赖
-            const nodeModulesPath = path.join(workspacePath, 'node_modules');
-            try {
-                await fs.access(nodeModulesPath);
-                console.log(`✅ node_modules已存在: ${workspacePath}`);
-            } catch {
-                // node_modules不存在，需要安装依赖
-                console.log(`📦 正在安装依赖: ${workspacePath}`);
-                await this.installDependencies(workspacePath);
-            }
-
-            console.log(`✅ 用户项目工作空间创建成功: ${workspacePath}`);
-            return workspacePath;
-        } catch (error) {
-            console.error('创建用户项目工作空间失败:', error);
-            throw error;
-        }
-    }
 
     /**
      * 安装项目依赖
@@ -262,12 +195,18 @@ export class ProjectManager {
      * 查找可用端口
      */
     private async findAvailablePort(startPort: number = 3100): Promise<number> {
+        console.log(`🔍 开始查找可用端口，起始端口: ${startPort}`);
+
         for (let port = startPort; port < startPort + 100; port++) {
-            if (await this.isPortAvailable(port)) {
+            const isAvailable = await this.isPortAvailable(port);
+            console.log(`🔍 检查端口 ${port}: ${isAvailable ? '可用' : '被占用'}`);
+
+            if (isAvailable) {
+                console.log(`✅ 找到可用端口: ${port}`);
                 return port;
             }
         }
-        throw new Error('找不到可用端口');
+        throw new Error(`找不到可用端口，已检查 ${startPort} 到 ${startPort + 99}`);
     }
 
     /**
@@ -280,19 +219,31 @@ export class ProjectManager {
             const packageContent = await fs.readFile(packageJsonPath, 'utf-8');
             const packageJson = JSON.parse(packageContent);
 
+            console.log(`📝 更新package.json端口: ${port}`);
+            console.log(`原始dev脚本: ${packageJson.scripts?.dev}`);
+
             // 更新dev脚本，移除硬编码的端口，使用环境变量
             if (packageJson.scripts && packageJson.scripts.dev) {
                 // 移除现有的端口参数，然后添加新的端口
-                packageJson.scripts.dev = packageJson.scripts.dev
-                    .replace(/-p\s+\d+/, '') // 移除现有的 -p 端口参数
-                    .replace(/--port\s+\d+/, '') // 移除现有的 --port 端口参数
-                    .trim() + ` --port ${port}`;
+                let devScript = packageJson.scripts.dev
+                    .replace(/-p\s+\d+/g, '') // 移除现有的 -p 端口参数
+                    .replace(/--port\s+\d+/g, '') // 移除现有的 --port 端口参数
+                    .replace(/\s+/g, ' ') // 清理多余空格
+                    .trim();
+
+                // 添加新的端口参数
+                packageJson.scripts.dev = `${devScript} --port ${port}`;
+
+                console.log(`更新后dev脚本: ${packageJson.scripts.dev}`);
+            } else {
+                console.warn('package.json中没有找到dev脚本');
             }
 
             await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
-            console.log(`📝 已更新package.json端口为: ${port}`);
+            console.log(`✅ 已更新package.json端口为: ${port}`);
         } catch (error) {
-            console.warn('更新package.json端口失败:', error);
+            console.error('更新package.json端口失败:', error);
+            throw error; // 将错误抛出，让上层处理
         }
     }
 
@@ -401,12 +352,18 @@ export class ProjectManager {
                     if (output.includes('EADDRINUSE') || output.includes('address already in use')) {
                         console.error(`❌ 端口 ${port} 被占用`);
                         instance.status.status = 'error';
-                        instance.status.error = `端口 ${port} 被占用`;
+                        instance.status.error = `端口 ${port} 被占用，请停止其他使用该端口的服务`;
                         this.wsManager.onProjectError(instance.id, instance.status.error);
 
-                        if (!hasStarted) {
-                            reject(new Error(`端口 ${port} 被占用`));
+                        // 立即关闭进程
+                        if (childProcess && !childProcess.killed) {
+                            childProcess.kill('SIGTERM');
                         }
+
+                        if (!hasStarted) {
+                            reject(new Error(`端口 ${port} 被占用，请停止其他使用该端口的服务`));
+                        }
+                        return; // 避免继续处理其他输出
                     }
 
                     // 检查编译错误
@@ -543,29 +500,98 @@ export class ProjectManager {
         return Array.from(this.projects.values()).map(instance => instance.status);
     }
 
-    async saveProjectFiles(projectId: string, files: { [filePath: string]: string }, userId?: string): Promise<void> {
-        const instance = this.projects.get(projectId);
+    async saveProjectFiles(projectId: string, files: { [filePath: string]: string }): Promise<void> {
+        let instance = this.projects.get(projectId);
+        let workingDir: string;
+        if (instance) {
+            // 项目已存在，使用现有实例
+            workingDir = instance.workingDir;
+        } else {
+            // 项目不存在，直接使用默认 sandbox 目录，无需启动
+            workingDir = path.join(process.cwd(), 'sandbox');
+            console.log(`📁 项目 ${projectId} 未启动，直接写入 sandbox 目录: ${workingDir}`);
+        }
 
-        if (instance && instance.isUserProject && userId) {
-            // 保存到数据库
-            await this.userProjectService.saveFiles(userId, projectId, files);
-
-            // 同时更新工作空间文件
+        // 直接写入文件
             for (const [filePath, content] of Object.entries(files)) {
-                const fullPath = path.join(instance.workingDir, filePath);
+                const fullPath = path.join(workingDir, filePath);
                 const dirPath = path.dirname(fullPath);
 
                 try {
                     await fs.mkdir(dirPath, { recursive: true });
                     await fs.writeFile(fullPath, content, 'utf-8');
+                    console.log(`✅ 文件已保存: ${fullPath}`);
                 } catch (error) {
-                    console.error(`写入文件失败 ${filePath}:`, error);
-                }
+                console.error(`❌ 写入文件失败 ${filePath}:`, error);
+                throw error;
+            }
+        }
+
+
+
+        console.log(`💾 项目文件已保存到 ${workingDir}: ${projectId}`);
+    }
+
+    /**
+     * 从GitHub下载项目到sandbox
+     */
+    async downloadFromGitHub(githubUrl: string): Promise<{
+        success: boolean;
+        message: string;
+        projectInfo?: any;
+        error?: string;
+    }> {
+        try {
+            console.log(`📥 开始从GitHub下载项目: ${githubUrl}`);
+
+            // 停止所有正在运行的项目
+            const runningProjects = Array.from(this.projects.keys());
+            await Promise.all(runningProjects.map(id => this.stopProject(id)));
+
+            const sandboxPath = path.join(process.cwd(), 'sandbox');
+
+            // 下载GitHub仓库
+            await this.githubDownloader.downloadRepository(githubUrl, {
+                targetPath: sandboxPath,
+                cleanup: true
+            });
+
+            // 验证项目
+            const validation = await this.githubDownloader.validateNodeProject(sandboxPath);
+
+            if (!validation.isValid) {
+                return {
+                    success: false,
+                    message: '下载的项目不是有效的Node.js项目',
+                    error: validation.errors.join(', ')
+                };
             }
 
-            console.log(`💾 用户项目文件已保存: ${projectId}`);
-        } else {
-            console.warn(`无法保存文件，项目不是用户项目或缺少用户ID: ${projectId}`);
+            // 获取项目信息
+            const projectInfo = await this.githubDownloader.getProjectInfo(sandboxPath);
+
+            // 安装依赖
+            console.log(`📦 开始安装项目依赖...`);
+            await this.installDependencies(sandboxPath);
+
+            console.log(`✅ GitHub项目设置完成: ${projectInfo.name}`);
+
+            return {
+                success: true,
+                message: '项目从GitHub下载并设置成功',
+                projectInfo: {
+                    ...projectInfo,
+                    validation
+                }
+            };
+
+        } catch (error) {
+            console.error('从GitHub下载项目失败:', error);
+            return {
+                success: false,
+                message: '下载项目失败',
+                error: error instanceof Error ? error.message : '未知错误'
+            };
         }
     }
 

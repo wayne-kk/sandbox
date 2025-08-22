@@ -3,13 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import IntegratedIDE from '@/components/IDE/IntegratedIDE';
-import { useUser } from '@/hooks/useUser';
 
 export default function EditorPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.projectId as string;
-  const { user, extractUserFromResponse } = useUser();
   
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -32,33 +30,55 @@ export default function EditorPage() {
       
       console.log(`🔍 正在加载项目: ${projectId}`);
       
-      // 首先尝试通过用户项目API加载
-      let response = await fetch(`/api/user-projects/${projectId}`, {
-        credentials: 'include' // 包含Cookie
-      });
-
-      console.log(`📡 API响应状态: ${response.status}`);
-
-      // 提取用户信息
-      extractUserFromResponse(response);
-
+      // 尝试从项目文件API加载项目
+      let response = await fetch(`/api/projects/${projectId}/files`);
       let data = await response.json();
       console.log(`📄 API响应数据:`, data);
 
-      // 如果用户项目API失败，尝试直接访问项目
-      if (!data.success) {
-        console.log(`⚠️ 用户项目API失败，尝试直接访问项目`);
-        
-        response = await fetch(`/api/test-project-access`);
-        data = await response.json();
-        console.log(`📄 直接访问API响应数据:`, data);
-      }
-
-      if (data.success) {
-        setProject(data.data || data);
-        console.log(`✅ 项目加载成功:`, data.data?.project?.name || data.project?.name);
+      if (data.success && data.data) {
+        setProject({
+          project: {
+            name: `项目 ${projectId}`,
+            description: '代码沙盒项目',
+            framework: 'react'
+          },
+          files: data.data || {}
+        });
+        console.log(`✅ 项目加载成功`);
       } else {
-        throw new Error(data.error || '加载项目失败');
+        // 如果没有现有项目，创建一个默认项目
+        setProject({
+          project: {
+            name: `新项目 ${projectId}`,
+            description: '全新的代码沙盒项目',
+            framework: 'react'
+          },
+          files: {
+            'App.tsx': `import React from 'react';
+
+function App() {
+  return (
+    <div className="App">
+      <h1>欢迎使用代码沙盒</h1>
+      <p>开始编写您的代码吧！</p>
+    </div>
+  );
+}
+
+export default App;`,
+            'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码沙盒</title>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>`
+          }
+        });
       }
     } catch (error) {
       console.error('❌ 加载项目失败:', error);
@@ -75,9 +95,6 @@ export default function EditorPage() {
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">加载项目中...</p>
           <p className="mt-2 text-sm text-gray-500">项目ID: {projectId}</p>
-          {user && (
-            <p className="mt-1 text-sm text-gray-500">用户: {user.userId}</p>
-          )}
         </div>
       </div>
     );
@@ -92,7 +109,6 @@ export default function EditorPage() {
             <p className="text-red-800 mb-2">{error}</p>
             <div className="text-sm text-red-600 space-y-1">
               <p><strong>项目ID:</strong> {projectId}</p>
-              {user && <p><strong>用户ID:</strong> {user.userId}</p>}
             </div>
           </div>
           <div className="space-x-4">
@@ -106,7 +122,7 @@ export default function EditorPage() {
               onClick={handleBackToDashboard}
               className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
             >
-              返回Dashboard
+              返回首页
             </button>
           </div>
         </div>
@@ -124,7 +140,7 @@ export default function EditorPage() {
             onClick={handleBackToDashboard}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            返回Dashboard
+            返回首页
           </button>
         </div>
       </div>
@@ -144,16 +160,11 @@ export default function EditorPage() {
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            {user && (
-              <div className="text-sm text-gray-500">
-                用户: {user.userId}
-              </div>
-            )}
             <button
               onClick={handleBackToDashboard}
               className="text-sm text-gray-600 hover:text-gray-800"
             >
-              ← 返回Dashboard
+              ← 返回首页
             </button>
           </div>
         </div>
@@ -163,9 +174,9 @@ export default function EditorPage() {
         projectId={projectId}
         initialFiles={project.files}
         framework={project.project.framework}
-        isUserProject={true}
+        isUserProject={false}
         className="h-[calc(100vh-80px)]"
       />
     </div>
   );
-} 
+}

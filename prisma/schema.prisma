@@ -10,54 +10,16 @@ datasource db {
   url      = "file:./dev.db"
 }
 
-// 用户模型 - 简化版
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // 关联的项目
-  projects UserProject[]
-
-  @@map("users")
-}
-
-// 用户项目 - 基于模板创建的项目实例
-model UserProject {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String   // 项目名称，如 "我的React应用"
-  description String?  // 项目描述
-  framework   String   @default("react") // react, vue, next, vanilla
-  template    String   @default("default") // 基于哪个模板创建
-  isPublic    Boolean  @default(false) // 是否公开
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  lastOpenAt  DateTime @default(now()) // 最后打开时间
-
-  // 关联用户和文件
-  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  files ProjectFile[]
-
-  @@map("user_projects")
-  @@index([userId, lastOpenAt])
-}
-
-// 项目文件
+// 项目文件 - 独立的项目文件管理，不依赖用户
 model ProjectFile {
   id        String   @id @default(cuid())
-  projectId String
+  projectId String   // 项目ID，现在是独立的标识符
   filePath  String   // 文件路径，如 "src/App.tsx"
   content   String   // 文件内容
   size      Int      @default(0) // 文件大小（字节）
   language  String?  // 文件语言类型
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  project UserProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_files")
   @@unique([projectId, filePath]) // 同一个项目中文件路径唯一

@@ -73,6 +73,7 @@ export default function IntegratedIDE({
   // 预览相关状态
   const [previewKey, setPreviewKey] = useState(0);
   const [showBuildLog, setShowBuildLog] = useState(false);
+  const [lastUrl, setLastUrl] = useState('');
   
   // 从WebSocket状态中获取项目状态
   const projectStatus = wsState.status;
@@ -181,6 +182,24 @@ export default function Home() {
       }
     }
   }, [files]);
+
+  // 监听预览URL变化，自动刷新iframe
+  useEffect(() => {
+    if (previewUrl && previewUrl !== lastUrl) {
+      console.log(`🔄 预览URL变化: ${lastUrl} → ${previewUrl}`);
+      setLastUrl(previewUrl);
+      
+      // 强制刷新iframe
+      setPreviewKey(prev => prev + 1);
+      
+      // 如果项目正在运行且有新URL，自动切换到预览标签
+      if (projectStatus === 'running' && activeTab !== 'preview') {
+        setTimeout(() => {
+          setActiveTab('preview');
+        }, 1000);
+      }
+    }
+  }, [previewUrl, lastUrl, projectStatus, activeTab]);
 
   // WebSocket会自动处理状态同步，不需要额外的初始化检查
 
@@ -327,13 +346,19 @@ export default function Home() {
       const data = await response.json();
 
       if (data.success) {
-        setPreviewKey(prev => prev + 1);
         addBuildLog('✅ 项目启动成功！');
+        addBuildLog('🔗 等待预览服务器响应...');
         
-        // 自动切换到预览标签
+        // 不再手动设置previewKey，让WebSocket状态更新来触发
+        // setPreviewKey(prev => prev + 1);
+        
+        // 延迟自动切换到预览标签，给WebSocket更多时间同步状态
         setTimeout(() => {
-          setActiveTab('preview');
-        }, 500);
+          if (wsState.status === 'running' && wsState.url) {
+            addBuildLog('🌐 预览已就绪，自动切换到预览标签');
+            setActiveTab('preview');
+          }
+        }, 2000);
       } else {
         throw new Error(data.error || '启动失败');
       }
@@ -373,9 +398,19 @@ export default function Home() {
 
   // 刷新预览
   const refreshPreview = () => {
-    if (iframeRef.current && previewUrl) {
+    if (previewUrl) {
+      console.log('🔄 手动刷新预览:', previewUrl);
       setPreviewKey(prev => prev + 1);
-      addBuildLog('🔄 预览已刷新');
+      addBuildLog(`🔄 正在刷新预览: ${previewUrl}`);
+      
+      // 强制iframe重新加载
+      setTimeout(() => {
+        if (iframeRef.current) {
+          addBuildLog('✅ 预览已刷新完成');
+        }
+      }, 500);
+    } else {
+      addBuildLog('❌ 无法刷新预览: 预览URL不可用');
     }
   };
 
@@ -727,6 +762,14 @@ export default function Home() {
                 className="w-full h-full border-0"
                 title="项目预览"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
+                onLoad={() => {
+                  console.log('✅ iframe加载完成:', previewUrl);
+                  addBuildLog('🌐 预览页面加载完成');
+                }}
+                onError={() => {
+                  console.error('❌ iframe加载错误:', previewUrl);
+                  addBuildLog('❌ 预览页面加载失败');
+                }}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center bg-gray-50">

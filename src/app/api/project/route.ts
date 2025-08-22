@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ProjectManager } from '@/lib/project-manager';
-import { UserSessionManager } from '@/lib/user-session';
 
 const projectManager = ProjectManager.getInstance();
 
@@ -46,10 +45,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        // 获取或创建用户会话
-        const session = await UserSessionManager.getOrCreateSession(request);
-        const userId = session.userId;
-
         const body = await request.json();
         const { action, projectId, files, framework } = body;
 
@@ -60,16 +55,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const response = await handleProjectAction(action, projectId, userId, { files, framework });
-
-        // 设置会话Cookie
-        response.cookies.set('session-id', session.sessionId, {
-            httpOnly: true,
-            maxAge: 24 * 60 * 60
-        });
-        response.headers.set('x-user-id', userId);
-
-        return response;
+        return await handleProjectAction(action, projectId, { files, framework });
     } catch (error) {
         console.error('项目操作失败:', error);
         return NextResponse.json(
@@ -82,13 +68,12 @@ export async function POST(request: NextRequest) {
 async function handleProjectAction(
     action: string,
     projectId: string,
-    userId: string,
     params: { files?: any; framework?: string }
 ): Promise<NextResponse> {
     switch (action) {
         case 'start':
             try {
-                const status = await projectManager.startProject(projectId, userId);
+                const status = await projectManager.startProject(projectId);
                 return NextResponse.json({
                     success: true,
                     data: status,
@@ -118,7 +103,7 @@ async function handleProjectAction(
         case 'update':
             try {
                 if (params.files) {
-                    await projectManager.saveProjectFiles(projectId, params.files, userId);
+                    await projectManager.saveProjectFiles(projectId, params.files);
                 }
                 return NextResponse.json({
                     success: true,
