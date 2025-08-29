@@ -78,7 +78,7 @@ export class DifyClient {
         console.log(`📋 options:`, options);
 
         const requestBody = {
-            inputs: { query: prompt, project_type: options.projectType, context: options.context, component_type: options.component_type },// 使用用户输入的描述
+            inputs: { query: prompt, project_type: options.projectType, context: options.context, component_type: options.component_type, designRules: options.designRules },// 使用用户输入的描述
             response_mode: "blocking",
             conversation_id: "", // 可以根据需要填写
             user: "abc-123", // 替换为实际的用户标识
@@ -167,70 +167,6 @@ export class DifyClient {
         };
     }
 
-    /**
-     * 解析文本响应（降级方案）
-     */
-    private parseTextResponse(text: string): GenerateResult {
-        // 提取代码块
-        const codeBlocks = text.matchAll(/```(?:tsx?|javascript|typescript)?\s*([\s\S]*?)\s*```/g);
-        const files: GeneratedFile[] = [];
-
-        let index = 0;
-        for (const match of codeBlocks) {
-            const content = match[1].trim();
-            const path = this.inferFilePath(content, index);
-
-            files.push({
-                path,
-                content,
-                type: this.detectFileType(path)
-            });
-            index++;
-        }
-
-        if (files.length === 0) {
-            // 如果没有找到代码块，将整个响应作为单个文件
-            files.push({
-                path: 'app/page.tsx',
-                content: text,
-                type: 'tsx'
-            });
-        }
-
-        return {
-            files,
-            description: '从文本响应解析的代码',
-            features: [],
-            dependencies: [],
-            metadata: {
-                generatedAt: new Date().toISOString(),
-                model: 'dify',
-                conversationId: this.conversationId
-            }
-        };
-    }
-
-    /**
-     * 推断文件路径
-     */
-    private inferFilePath(content: string, index: number): string {
-        // 检查是否包含组件定义
-        if (content.includes('export default function') || content.includes('export function')) {
-            const componentMatch = content.match(/export\s+(?:default\s+)?function\s+(\w+)/);
-            if (componentMatch) {
-                const componentName = componentMatch[1];
-                return `components/${componentName}.tsx`;
-            }
-        }
-
-        // 检查是否是页面组件
-        if (content.includes('export default') && (content.includes('Home') || content.includes('Page'))) {
-            return 'app/page.tsx';
-        }
-
-        // 默认文件名
-        return index === 0 ? 'app/page.tsx' : `components/Component${index + 1}.tsx`;
-    }
 
     /**
      * 检测文件类型
@@ -267,6 +203,7 @@ export class DifyClient {
 interface GenerateOptions {
     projectType?: 'nextjs' | 'react' | 'vue';
     component_type?: string;
+    designRules?: string;
     context?: string;
     user?: string;
     headers?: Record<string, string>;

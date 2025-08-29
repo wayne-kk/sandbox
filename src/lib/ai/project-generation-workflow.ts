@@ -97,7 +97,8 @@ export class ProjectGenerationWorkflow {
             console.log('📋 项目标题:', requirement.title);
             console.log('📝 项目描述:', requirement.description);
             console.log('📄 页面数量:', requirement.pages ? requirement.pages.length : 0);
-            console.log('🏗️ 导航项:', requirement.navigation ? requirement.navigation.length : 0);
+            console.log('🧭 导航组件:', requirement.navigation ? `${requirement.navigation.section_name} (${requirement.navigation.section_type})` : '未配置');
+            console.log('📍 页脚组件:', requirement.footer ? `${requirement.footer.section_name} (${requirement.footer.section_type})` : '未配置');
 
             // 保存需求清单结果
             result.requirement = requirement;
@@ -140,7 +141,8 @@ export class ProjectGenerationWorkflow {
                     const sectionResult = await this.componentDifyClient!.generateUI(sectionPrompt, {
                         projectType: options.projectType || 'nextjs',
                         context: `${section.pageName} 页面的 ${section.sectionName} 组件`,
-                        component_type: section.sectionName
+                        component_type: section.sectionName,
+                        designRules: requirement.designRules
                     });
 
                     console.log(`✅ ${section.pageName} - ${section.sectionName} 组件生成完成`);
@@ -344,6 +346,8 @@ export class ProjectGenerationWorkflow {
                 options
             );
 
+            // 注意：layout.tsx 将在后续的 integrateProjectStructure 步骤中生成
+
             return {
                 success: true,
                 componentsWritten: fileWriteOperations.length,
@@ -428,7 +432,8 @@ export class ProjectGenerationWorkflow {
                 const pageResult = await this.componentDifyClient!.generateUI(pagePrompt, {
                     projectType: options.projectType || 'nextjs',
                     context: `${pageName}页面文件生成`,
-                    component_type: 'page'
+                    component_type: 'page',
+                    designRules: requirement.designRules
                 });
 
                 // 写入页面文件
@@ -456,6 +461,8 @@ export class ProjectGenerationWorkflow {
         console.log(`✅ 页面文件生成完成，共生成 ${writtenPages.length} 个页面`);
         return writtenPages;
     }
+
+
 
     /**
      * 构建页面生成提示词
@@ -511,13 +518,12 @@ ${sections.map((section: any) =>
 
 ### 页面模板结构
 \`\`\`tsx
-import { ComponentName1 } from '@/components/ComponentName1';
-import { ComponentName2 } from '@/components/ComponentName2';
+import  ComponentName1 from '@/components/ComponentName1';
+import  ComponentName2 from '@/components/ComponentName2';
 
 export default function ${pageName.replace(/\s+/g, '')}Page() {
   return (
     <div className="min-h-screen">
-      {/* 按照sections顺序组织组件 */}
       <ComponentName1 />
       <ComponentName2 />
     </div>
@@ -559,7 +565,7 @@ export default function ${pageName.replace(/\s+/g, '')}Page() {
             const projectStructure = await this.analyzeSandboxProject(options.analysis);
 
             // 构建项目结构整合提示词
-            const integrationPrompt = this.buildProjectStructurePrompt(
+            const integrationPrompt = await this.buildProjectStructurePrompt(
                 userPrompt,
                 requirement,
                 writtenPages,
@@ -572,7 +578,8 @@ export default function ${pageName.replace(/\s+/g, '')}Page() {
             const structureResult = await this.componentDifyClient!.generateUI(integrationPrompt, {
                 projectType: options.projectType || 'nextjs',
                 context: '项目结构整合和导航生成',
-                component_type: 'structure'
+                component_type: 'structure',
+                designRules: requirement.designRules
             });
 
             const generatedFiles: string[] = [];
@@ -611,7 +618,7 @@ export default function ${pageName.replace(/\s+/g, '')}Page() {
     /**
      * 构建项目结构整合提示词
      */
-    private buildProjectStructurePrompt(
+    private async buildProjectStructurePrompt(
         originalPrompt: string,
         requirement: any,
         writtenPages: Array<{
@@ -621,18 +628,52 @@ export default function ${pageName.replace(/\s+/g, '')}Page() {
             components: string[];
         }>,
         projectStructure: string
-    ): string {
+    ): Promise<string> {
         // 构建页面导航信息
         const navigationInfo = writtenPages.map(page =>
             `- **${page.pageName}**: /${page.routePath} (${page.filePath})`
         ).join('\n');
 
-        // 构建导航结构
+        // 构建导航结构 - 处理新的数据格式
         const navStructure = requirement.navigation ?
-            requirement.navigation.map((nav: any) =>
-                `- ${nav.label} -> ${nav.target_page || nav.url || ''}`
-            ).join('\n') :
+            `- **导航配置**: ${requirement.navigation.description || '根据页面结构生成导航菜单'}` :
             '根据页面结构自动生成导航';
+
+        // 构建页脚结构
+        const footerStructure = requirement.footer ?
+            `- **页脚配置**: ${requirement.footer.description || '页脚包含联系信息、快速链接等'}` :
+            '根据项目需求生成页脚';
+
+        return await this.buildProjectStructurePromptWithCurrentLayout(
+            originalPrompt,
+            requirement,
+            writtenPages,
+            projectStructure,
+            navStructure,
+            footerStructure,
+            navigationInfo
+        );
+    }
+
+    /**
+     * 构建项目结构整合提示词（实时读取当前 layout.tsx）
+     */
+    private async buildProjectStructurePromptWithCurrentLayout(
+        originalPrompt: string,
+        requirement: any,
+        writtenPages: Array<{
+            pageName: string;
+            routePath: string;
+            filePath: string;
+            components: string[];
+        }>,
+        projectStructure: string,
+        navStructure: string,
+        footerStructure: string,
+        navigationInfo: string
+    ): Promise<string> {
+        // 实时读取当前的 layout.tsx 文件
+        const currentLayout = await this.readSandboxFile('app/layout.tsx', '当前 layout.tsx');
 
         return `## 项目结构整合任务
 
@@ -652,96 +693,152 @@ ${navigationInfo}
 ### 导航结构要求
 ${navStructure}
 
+### 页脚结构要求
+${footerStructure}
+
+### 当前 Layout 文件内容
+${currentLayout}
+
 ### 整合任务
 请生成以下项目结构文件来完成整合：
 
 #### 1. 全局布局文件 (app/layout.tsx)
-- 更新根布局以包含导航菜单
-- 设置全局样式和字体
-- 包含必要的元数据配置
-- 添加导航组件
+- 基于当前 layout.tsx 文件进行更新
+- 整合全局导航和页脚组件
+- 保持现有的样式和配置
+- 添加必要的组件导入
 
 #### 2. 导航组件 (components/Navigation.tsx)
-- 创建响应式导航菜单
 - 包含所有页面的链接
-- 使用 shadcn/ui 组件
 - 支持移动端展示
 
-#### 3. 其他必要文件
+#### 3. 页脚组件 (components/Footer.tsx)
+- 包含联系信息、快速链接、社交媒体链接
+- 版权信息和其他必要信息
+
+#### 4. 其他必要文件
 - 如果需要，可以创建其他辅助组件
 - 更新配置文件（如有需要）
 
 ### 技术要求
-1. **Next.js App Router**: 使用最新的 App Router 格式
 2. **TypeScript**: 所有文件使用 TypeScript
-3. **shadcn/ui**: 使用项目中已有的 shadcn/ui 组件
 4. **Tailwind CSS**: 使用 Tailwind 进行样式设置
-5. **响应式设计**: 确保在所有设备上良好显示
-6. **可访问性**: 遵循 Web 可访问性标准
 
 ### 导航链接映射
 ${writtenPages.map(page =>
             `- ${page.pageName}: href="/${page.routePath}"`
         ).join('\n')}
 
-### 布局模板结构
-\`\`\`tsx
-import { Navigation } from '@/components/Navigation';
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="zh-CN">
-      <body>
-        <Navigation />
-        <main>
-          {children}
-        </main>
-      </body>
-    </html>
-  );
-}
-\`\`\`
-
 请确保：
+- 基于当前 layout.tsx 内容进行增强
 - 正确的页面链接和路由
 - 良好的用户体验和导航
 - 与现有项目结构的兼容性
-- 响应式设计和移动友好`;
+`;
     }
 
     /**
-     * 使用示例：如何配置忽略目录
-     * 
-     * @example
-     * ```typescript
-     * const workflow = ProjectGenerationWorkflow.getInstance();
-     * 
-     * // 基础用法 - 忽略默认目录 (ui, node_modules, .next, .git, dist, build)
-     * await workflow.generateProject("创建一个博客网站", {
-     *     projectId: "my-blog"
-     * });
-     * 
-     * // 自定义忽略目录
-     * await workflow.generateProject("创建一个电商网站", {
-     *     projectId: "my-shop",
-     *     analysis: {
-     *         ignoreDirs: ['ui', 'old-components', 'backup'], // 自定义忽略目录
-     *         ignoreFiles: ['*.test.tsx', '*.spec.ts'] // 未来可扩展：忽略特定文件
-     *     }
-     * });
-     * ```
+     * 通用文件读取方法
+     * @param relativePath 相对于sandbox目录的文件路径
+     * @param description 文件描述，用于错误提示
+     * @param wrapInCodeBlock 是否包装在代码块中
      */
+    private async readSandboxFile(
+        relativePath: string,
+        description: string = '文件',
+        wrapInCodeBlock: boolean = true
+    ): Promise<string> {
+        try {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+
+            const filePath = path.join(process.cwd(), 'sandbox', relativePath);
+            const fileContent = await fs.readFile(filePath, 'utf-8');
+
+            if (wrapInCodeBlock) {
+                // 根据文件扩展名确定语言
+                const ext = path.extname(relativePath).toLowerCase();
+                const language = this.getCodeBlockLanguage(ext);
+
+                return `\`\`\`${language}
+${fileContent}
+\`\`\``;
+            }
+
+            return fileContent;
+
+        } catch (error) {
+            console.warn(`无法读取${description} (${relativePath}):`, error);
+            return `**${description}**: 文件不存在或无法读取`;
+        }
+    }
+
+    /**
+     * 根据文件扩展名获取代码块语言标识
+     */
+    private getCodeBlockLanguage(extension: string): string {
+        const languageMap: Record<string, string> = {
+            '.tsx': 'tsx',
+            '.ts': 'typescript',
+            '.jsx': 'jsx',
+            '.js': 'javascript',
+            '.css': 'css',
+            '.scss': 'scss',
+            '.json': 'json',
+            '.md': 'markdown',
+            '.html': 'html',
+            '.xml': 'xml',
+            '.yml': 'yaml',
+            '.yaml': 'yaml'
+        };
+
+        return languageMap[extension] || 'text';
+    }
 
     /**
      * 收集所有需要生成的 sections
+     * 包括页面sections和全局navigation、footer组件
      */
     private collectAllSections(requirement: any): Array<{ pageName: string, sectionName: string, sectionData: any }> {
         const allSections: Array<{ pageName: string, sectionName: string, sectionData: any }> = [];
 
+        // 添加全局 navigation 组件
+        if (requirement.navigation) {
+            allSections.push({
+                pageName: 'Global',
+                sectionName: requirement.navigation.section_name || 'Navigation',
+                sectionData: {
+                    ...requirement.navigation,
+                    section_type: requirement.navigation.section_type || 'Navigation',
+                    isGlobal: true,
+                    globalContext: {
+                        projectTitle: requirement.title,
+                        projectDescription: requirement.description,
+                        pages: requirement.pages || []
+                    }
+                }
+            });
+        }
+
+        // 添加全局 footer 组件
+        if (requirement.footer) {
+            allSections.push({
+                pageName: 'Global',
+                sectionName: requirement.footer.section_name || 'Footer',
+                sectionData: {
+                    ...requirement.footer,
+                    section_type: requirement.footer.section_type || 'Footer',
+                    isGlobal: true,
+                    globalContext: {
+                        projectTitle: requirement.title,
+                        projectDescription: requirement.description,
+                        pages: requirement.pages || []
+                    }
+                }
+            });
+        }
+
+        // 添加页面级别的 sections
         if (requirement.pages && Array.isArray(requirement.pages)) {
             requirement.pages.forEach((page: any) => {
                 const pageName = page.page_name || page.name || '未知页面';
@@ -755,10 +852,12 @@ export default function RootLayout({
                             sectionName,
                             sectionData: {
                                 ...section,
+                                isGlobal: false,
                                 pageContext: {
                                     pageName,
                                     pageUrl: page.url_slug || page.url || '',
-                                    pageDescription: page.description || ''
+                                    pageDescription: page.description || '',
+                                    metaDescription: page.meta_description || ''
                                 }
                             }
                         });
