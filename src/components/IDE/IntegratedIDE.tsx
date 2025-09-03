@@ -25,8 +25,10 @@ import {
   ChevronDown,
   Folder,
   FolderOpen,
-  Info
+  Info,
+  RotateCcw
 } from 'lucide-react';
+import { ResetConfirmationDialog } from '@/components/ui/reset-confirmation-dialog';
 
 interface FileTab {
   path: string;
@@ -82,6 +84,10 @@ export default function IntegratedIDE({
   
   // UI状态
   const [showStatusInfo, setShowStatusInfo] = useState(false);
+  
+  // 重置功能状态
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const buildLogRef = useRef<HTMLDivElement>(null);
@@ -394,6 +400,57 @@ export default function Home() {
     }
   };
 
+  // 重置sandbox功能
+  const resetSandbox = async () => {
+    setIsResetting(true);
+    try {
+      addBuildLog('🔄 开始重置sandbox...');
+      
+      // 先停止项目
+      if (projectStatus === 'running') {
+        addBuildLog('⏹️ 停止当前项目...');
+        await stopProject();
+      }
+      
+      // 调用重置API
+      const response = await fetch('/api/sandbox/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmReset: true })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        addBuildLog('✅ Sandbox重置成功');
+        addBuildLog(`📁 已恢复到原始项目模板`);
+        
+        // 重新加载文件
+        const newFiles = await getDefaultFiles();
+        setFiles(newFiles);
+        
+        // 清空打开的标签页
+        setOpenTabs([]);
+        setActiveFile('');
+        
+        // 刷新预览
+        setPreviewKey(prev => prev + 1);
+        
+        // 关闭对话框
+        setShowResetDialog(false);
+        
+        addBuildLog('🎉 重置完成，可以开始新的开发了！');
+      } else {
+        throw new Error(data.error || '重置失败');
+      }
+    } catch (error) {
+      addBuildLog('❌ 重置失败: ' + error);
+      console.error('重置错误:', error);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   // WebSocket处理状态更新，不再需要轮询
 
   // 刷新预览
@@ -665,6 +722,16 @@ export default function Home() {
               </button>
             </>
           )}
+          
+          <button
+            onClick={() => setShowResetDialog(true)}
+            disabled={isResetting}
+            className="flex items-center gap-1 px-3 py-1 text-xs text-orange-600 hover:text-orange-800 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
+            title="重置sandbox到原始状态"
+          >
+            <RotateCcw size={14} className={isResetting ? 'animate-spin' : ''} />
+            {isResetting ? '重置中' : '重置'}
+          </button>
           
           <button
             onClick={() => setShowBuildLog(!showBuildLog)}
@@ -957,6 +1024,14 @@ export default function Home() {
           </div>
         )}
       </div>
+      
+      {/* 重置确认对话框 */}
+      <ResetConfirmationDialog
+        open={showResetDialog}
+        onOpenChange={setShowResetDialog}
+        onConfirm={resetSandbox}
+        isResetting={isResetting}
+      />
     </div>
   );
 } 

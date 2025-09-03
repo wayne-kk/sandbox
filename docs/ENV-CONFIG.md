@@ -1,78 +1,85 @@
-# 环境变量配置说明
+# 环境配置指南
+
+本文档说明如何配置项目的环境变量。
 
 ## 🔧 必需的环境变量
 
-根据你的配置需求，系统需要以下**3个**环境变量：
+### Supabase 配置
 
 ```bash
-# 统一的 Dify API 接口地址
-DIFY_API_ENDPOINT=your_dify_api_endpoint_here
-
-# 需求清单生成功能的 API 密钥
-REQUIRMENT_DIFY_API_KEY=your_requirement_api_key_here
-
-# 组件生成功能的 API 密钥
-COMPONENT_DIFY_API_KEY=your_component_api_key_here
+# Supabase 配置
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 ```
 
-## 📋 配置原理
-
-### 统一端点设计
-- **一个 API 端点**: `DIFY_API_ENDPOINT` 处理所有请求
-- **两个不同密钥**: 通过不同的 API 密钥区分功能
-
-### 工作流程
-1. **需求分析阶段**: 使用 `REQUIRMENT_DIFY_API_KEY` 调用 API
-2. **代码生成阶段**: 使用 `COMPONENT_DIFY_API_KEY` 调用 API
-
-## 🌟 优势
-- **配置简单**: 只需要配置3个环境变量
-- **管理方便**: 统一的 API 端点，便于维护
-- **功能分离**: 不同密钥对应不同功能，便于权限管理
-
-## ✅ 配置验证
-
-访问 `/api/ai/config-check` 可以检查配置状态：
+### Azure OpenAI 配置
 
 ```bash
-curl http://localhost:3000/api/ai/config-check
+# Azure OpenAI 配置
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2024-02-01
+AZURE_OPENAI_DEPLOYMENT_NAME=text-embedding-3-large
+AZURE_OPENAI_CHAT_DEPLOYMENT_NAME=gpt-4
 ```
 
-## 🔍 故障排除
+## 📋 配置步骤
 
-### 常见问题
+### 1. 创建环境变量文件
 
-1. **API 端点未配置**
-   ```
-   错误: DIFY_API_ENDPOINT 未设置
-   解决: 设置统一的 Dify API 端点地址
-   ```
-
-2. **需求分析密钥未配置**
-   ```
-   错误: REQUIRMENT_DIFY_API_KEY 未设置
-   解决: 设置需求清单生成功能的专用密钥
-   ```
-
-3. **组件生成密钥未配置**
-   ```
-   错误: COMPONENT_DIFY_API_KEY 未设置
-   解决: 设置组件生成功能的专用密钥
-   ```
-
-## 📝 .env.local 示例
+在项目根目录创建 `.env.local` 文件：
 
 ```bash
-# Dify API 配置
-DIFY_API_ENDPOINT=https://api.dify.ai/v1/workflows/your-workflow-id/run
-REQUIRMENT_DIFY_API_KEY=app-your-requirement-api-key
-COMPONENT_DIFY_API_KEY=app-your-component-api-key
-
-# 其他配置
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+touch .env.local
 ```
 
-> **注意**: 
-> - 替换示例中的 `your-workflow-id` 为实际的工作流ID
-> - 替换示例中的 API 密钥为实际的密钥值
-> - 确保密钥对应正确的功能权限
+### 2. 添加配置
+
+将上述环境变量添加到 `.env.local` 文件中，替换为实际的值。
+
+### 3. 重启服务
+
+```bash
+npm run dev
+```
+
+## 🔍 获取配置值
+
+### Supabase
+
+1. 登录 [Supabase](https://supabase.com)
+2. 选择您的项目
+3. 进入 Settings > API
+4. 复制 Project URL 和 anon public key
+
+### Azure OpenAI
+
+1. 登录 [Azure Portal](https://portal.azure.com)
+2. 找到您的 Azure OpenAI 资源
+3. 进入 Keys and Endpoint
+4. 复制 Key 1 和 Endpoint
+5. 在 Azure OpenAI Studio 中部署模型
+
+## ⚠️ 注意事项
+
+1. **不要提交 `.env.local` 文件到版本控制**
+2. **确保 API 密钥的安全性**
+3. **检查 Azure OpenAI 服务的配额和限制**
+4. **验证模型部署状态**
+
+## 🧪 测试配置
+
+启动开发服务器后，检查控制台是否有配置错误信息。如果配置正确，您应该能够：
+
+- 生成向量嵌入
+- 进行向量搜索
+- 生成代码描述
+- 使用 AI 功能
+
+## 🆘 故障排除
+
+如果遇到配置问题，请参考：
+
+- [Azure OpenAI 配置指南](./AZURE-OPENAI-SETUP.md)
+- [Supabase 设置指南](./SUPABASE-SETUP.md)
+- [项目文档](../README.md)
