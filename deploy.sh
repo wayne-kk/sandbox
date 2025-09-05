@@ -80,9 +80,18 @@ install_nodejs() {
         fi
     fi
     
-    # 安装 Node.js 18
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-    apt-get install -y nodejs
+    # 检测操作系统并使用对应的源
+    if [ -f /etc/redhat-release ]; then
+        # CentOS/RHEL 系统使用清华源
+        log_info "检测到 CentOS/RHEL 系统，使用清华源安装 Node.js..."
+        curl -fsSL https://mirrors.tuna.tsinghua.edu.cn/nodesource/setup_18.x | bash -
+        yum install -y nodejs
+    else
+        # Ubuntu/Debian 系统使用清华源
+        log_info "检测到 Ubuntu/Debian 系统，使用清华源安装 Node.js..."
+        curl -fsSL https://mirrors.tuna.tsinghua.edu.cn/nodesource/setup_18.x | bash -
+        apt-get install -y nodejs
+    fi
     
     log_success "Node.js 安装完成: $(node --version)"
 }
@@ -96,10 +105,49 @@ install_docker() {
         return 0
     fi
     
-    # 安装 Docker
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sh get-docker.sh
-    rm get-docker.sh
+    # 检测操作系统并使用对应的源
+    if [ -f /etc/redhat-release ]; then
+        # CentOS/RHEL 系统使用清华源
+        log_info "检测到 CentOS/RHEL 系统，使用清华源安装 Docker..."
+        
+        # 卸载旧版本
+        yum remove -y docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine
+        
+        # 安装必要的包
+        yum install -y yum-utils device-mapper-persistent-data lvm2
+        
+        # 添加清华源 Docker 仓库
+        yum-config-manager --add-repo https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/centos/docker-ce.repo
+        
+        # 更新缓存
+        yum makecache fast
+        
+        # 安装 Docker
+        yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+        
+    else
+        # Ubuntu/Debian 系统使用清华源
+        log_info "检测到 Ubuntu/Debian 系统，使用清华源安装 Docker..."
+        
+        # 卸载旧版本
+        apt-get remove -y docker docker-engine docker.io containerd runc
+        
+        # 安装必要的包
+        apt-get update
+        apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+        
+        # 添加清华源 GPG 密钥
+        curl -fsSL https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        
+        # 添加清华源仓库
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+        
+        # 更新包索引
+        apt-get update
+        
+        # 安装 Docker
+        apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    fi
     
     # 启动 Docker 服务
     systemctl start docker
@@ -108,6 +156,29 @@ install_docker() {
     # 添加当前用户到 docker 组
     usermod -aG docker $SUDO_USER
     
+    # 配置 Docker 镜像加速
+    log_info "配置 Docker 镜像加速..."
+    mkdir -p /etc/docker
+    cat > /etc/docker/daemon.json << 'EOF'
+{
+  "registry-mirrors": [
+    "https://mirror.ccs.tencentyun.com",
+    "https://docker.mirrors.ustc.edu.cn",
+    "https://reg-mirror.qiniu.com",
+    "https://hub-mirror.c.163.com"
+  ],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  }
+}
+EOF
+    
+    # 重启 Docker 服务使配置生效
+    systemctl daemon-reload
+    systemctl restart docker
+    
     log_success "Docker 安装完成: $(docker --version)"
 }
 
@@ -115,18 +186,35 @@ install_docker() {
 install_docker_compose() {
     log_info "安装 Docker Compose..."
     
-    if command -v docker-compose &> /dev/null; then
-        log_info "Docker Compose 已安装: $(docker-compose --version)"
+    # 检查 Docker Compose V2 (docker compose)
+    if docker compose version &> /dev/null; then
+        log_info "Docker Compose V2 已安装: $(docker compose version)"
         return 0
     fi
     
-    # 下载 Docker Compose
-    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    # 检查 Docker Compose V1 (docker-compose)
+    if command -v docker-compose &> /dev/null; then
+        log_info "Docker Compose V1 已安装: $(docker-compose --version)"
+        return 0
+    fi
     
-    # 添加执行权限
-    chmod +x /usr/local/bin/docker-compose
+    # 如果 Docker 安装时已经包含了 docker-compose-plugin，则不需要单独安装
+    if [ -f /etc/redhat-release ]; then
+        # CentOS/RHEL 系统，Docker 安装时已经包含了 docker-compose-plugin
+        log_info "CentOS/RHEL 系统，Docker Compose 已通过 docker-compose-plugin 安装"
+    else
+        # Ubuntu/Debian 系统，Docker 安装时已经包含了 docker-compose-plugin
+        log_info "Ubuntu/Debian 系统，Docker Compose 已通过 docker-compose-plugin 安装"
+    fi
     
-    log_success "Docker Compose 安装完成: $(docker-compose --version)"
+    # 验证安装
+    if docker compose version &> /dev/null; then
+        log_success "Docker Compose V2 安装完成: $(docker compose version)"
+    elif command -v docker-compose &> /dev/null; then
+        log_success "Docker Compose V1 安装完成: $(docker-compose --version)"
+    else
+        log_warning "Docker Compose 安装可能失败，请手动检查"
+    fi
 }
 
 # 安装 Nginx
@@ -138,9 +226,17 @@ install_nginx() {
         return 0
     fi
     
-    # 安装 Nginx
-    apt-get update
-    apt-get install -y nginx
+    # 检测操作系统并使用对应的包管理器
+    if [ -f /etc/redhat-release ]; then
+        # CentOS/RHEL 系统
+        log_info "检测到 CentOS/RHEL 系统，使用 yum 安装 Nginx..."
+        yum install -y nginx
+    else
+        # Ubuntu/Debian 系统
+        log_info "检测到 Ubuntu/Debian 系统，使用 apt 安装 Nginx..."
+        apt-get update
+        apt-get install -y nginx
+    fi
     
     # 启动 Nginx 服务
     systemctl start nginx
@@ -168,18 +264,46 @@ install_pm2() {
 configure_firewall() {
     log_info "配置防火墙..."
     
-    # 安装 ufw
-    apt-get install -y ufw
-    
-    # 配置防火墙规则
-    ufw allow 22/tcp    # SSH
-    ufw allow 80/tcp    # HTTP
-    ufw allow 443/tcp   # HTTPS
-    ufw allow 3000/tcp  # 应用端口
-    ufw allow 3100:3200/tcp  # Docker 端口范围
-    
-    # 启用防火墙
-    ufw --force enable
+    # 检测操作系统并使用对应的防火墙
+    if [ -f /etc/redhat-release ]; then
+        # CentOS/RHEL 系统使用 firewalld
+        log_info "检测到 CentOS/RHEL 系统，配置 firewalld..."
+        
+        # 启动 firewalld
+        systemctl start firewalld
+        systemctl enable firewalld
+        
+        # 配置防火墙规则
+        firewall-cmd --permanent --add-port=22/tcp     # SSH
+        firewall-cmd --permanent --add-port=80/tcp     # HTTP
+        firewall-cmd --permanent --add-port=443/tcp    # HTTPS
+        firewall-cmd --permanent --add-port=3000/tcp   # 应用端口
+        firewall-cmd --permanent --add-port=3001/tcp   # Grafana
+        firewall-cmd --permanent --add-port=9090/tcp   # Prometheus
+        firewall-cmd --permanent --add-port=3100-3200/tcp  # Docker 端口范围
+        
+        # 重新加载防火墙规则
+        firewall-cmd --reload
+        
+    else
+        # Ubuntu/Debian 系统使用 ufw
+        log_info "检测到 Ubuntu/Debian 系统，配置 ufw..."
+        
+        # 安装 ufw
+        apt-get install -y ufw
+        
+        # 配置防火墙规则
+        ufw allow 22/tcp     # SSH
+        ufw allow 80/tcp     # HTTP
+        ufw allow 443/tcp    # HTTPS
+        ufw allow 3000/tcp   # 应用端口
+        ufw allow 3001/tcp   # Grafana
+        ufw allow 9090/tcp   # Prometheus
+        ufw allow 3100:3200/tcp  # Docker 端口范围
+        
+        # 启用防火墙
+        ufw --force enable
+    fi
     
     log_success "防火墙配置完成"
 }
@@ -349,7 +473,16 @@ start_application() {
     if [ "$environment" = "production" ]; then
         # 生产环境使用 Docker Compose
         log_info "使用 Docker Compose 启动生产环境..."
-        docker-compose -f docker-compose.prod.yml up -d
+        
+        # 优先使用 Docker Compose V2，如果不可用则使用 V1
+        if docker compose version &> /dev/null; then
+            docker compose up -d
+        elif command -v docker-compose &> /dev/null; then
+            docker-compose up -d
+        else
+            log_error "Docker Compose 未安装，无法启动服务"
+            exit 1
+        fi
     else
         # 开发环境使用 PM2
         log_info "使用 PM2 启动开发环境..."
@@ -394,10 +527,10 @@ show_deployment_info() {
     echo "  - 健康检查: http://$server_ip/api/health"
     echo ""
     echo "📊 管理命令:"
-    echo "  - 查看应用状态: docker-compose -f /opt/v0-sandbox/v0-sandbox/docker-compose.prod.yml ps"
-    echo "  - 查看应用日志: docker-compose -f /opt/v0-sandbox/v0-sandbox/docker-compose.prod.yml logs -f"
-    echo "  - 重启应用: docker-compose -f /opt/v0-sandbox/v0-sandbox/docker-compose.prod.yml restart"
-    echo "  - 停止应用: docker-compose -f /opt/v0-sandbox/v0-sandbox/docker-compose.prod.yml down"
+    echo "  - 查看应用状态: docker compose ps (或 docker-compose ps)"
+    echo "  - 查看应用日志: docker compose logs -f (或 docker-compose logs -f)"
+    echo "  - 重启应用: docker compose restart (或 docker-compose restart)"
+    echo "  - 停止应用: docker compose down (或 docker-compose down)"
     echo ""
     echo "🔧 系统管理:"
     echo "  - 查看系统资源: htop"
