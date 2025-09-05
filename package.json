@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:pull": "prisma db pull",
@@ -15,8 +17,17 @@
     "db:migrate:reset": "prisma migrate reset",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "docker:build": "docker build -t v0-sandbox .",
-    "docker:run": "docker run -p 3000:3000 v0-sandbox"
+    "docker:build": "docker build -f Dockerfile.prod -t v0-sandbox:prod .",
+    "docker:run": "docker run -p 3000:3000 v0-sandbox:prod",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "deploy": "./deploy.sh production",
+    "deploy:staging": "./deploy.sh staging",
+    "health": "curl -f http://localhost:3000/api/health || exit 1",
+    "setup": "npm install && npm run db:generate && npm run db:push && npm run db:seed",
+    "clean": "rm -rf .next node_modules/.cache",
+    "clean:all": "rm -rf .next node_modules/.cache node_modules && npm install"
   },
   "dependencies": {
     "@azure/openai": "^2.0.0",
