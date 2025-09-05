@@ -86,11 +86,25 @@ install_nodejs() {
         log_info "检测到 CentOS/RHEL 系统，使用清华源安装 Node.js..."
         curl -fsSL https://mirrors.tuna.tsinghua.edu.cn/nodesource/setup_18.x | bash -
         yum install -y nodejs
+        
+        # 如果安装失败，尝试使用官方源
+        if [ $? -ne 0 ]; then
+            log_warning "清华源安装失败，尝试使用官方源..."
+            curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+            yum install -y nodejs
+        fi
     else
         # Ubuntu/Debian 系统使用清华源
         log_info "检测到 Ubuntu/Debian 系统，使用清华源安装 Node.js..."
         curl -fsSL https://mirrors.tuna.tsinghua.edu.cn/nodesource/setup_18.x | bash -
         apt-get install -y nodejs
+        
+        # 如果安装失败，尝试使用官方源
+        if [ $? -ne 0 ]; then
+            log_warning "清华源安装失败，尝试使用官方源..."
+            curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+            apt-get install -y nodejs
+        fi
     fi
     
     log_success "Node.js 安装完成: $(node --version)"
@@ -120,10 +134,18 @@ install_docker() {
         yum-config-manager --add-repo https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/centos/docker-ce.repo
         
         # 更新缓存
-        yum makecache fast
+        yum makecache
         
         # 安装 Docker
         yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+        
+        # 如果安装失败，尝试使用官方源
+        if [ $? -ne 0 ]; then
+            log_warning "清华源安装失败，尝试使用官方源..."
+            yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+            yum makecache
+            yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+        fi
         
     else
         # Ubuntu/Debian 系统使用清华源
