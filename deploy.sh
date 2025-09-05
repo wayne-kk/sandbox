@@ -402,6 +402,11 @@ deploy_application() {
     log_info "跳过构建步骤，将使用开发模式运行..."
     log_warning "注意：开发模式性能较低，仅适用于测试环境"
     
+    # 确保 sandbox 目录存在（运行时产物目录）
+    log_info "确保 sandbox 目录存在..."
+    mkdir -p sandbox
+    chown v0sandbox:v0sandbox sandbox
+    
     # 创建数据目录
     mkdir -p data
     
