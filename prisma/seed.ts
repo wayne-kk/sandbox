@@ -5,20 +5,6 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('🌱 开始填充数据库...');
 
-    // 创建示例用户
-    const user = await prisma.user.upsert({
-        where: { email: 'demo@example.com' },
-        update: {},
-        create: {
-            email: 'demo@example.com',
-            username: 'demo_user',
-            displayName: '演示用户',
-            planType: 'FREE',
-        },
-    });
-
-    console.log(`👤 创建用户: ${user.username} (${user.id})`);
-
     // 创建React模板
     const reactTemplate = await prisma.template.upsert({
         where: { name: 'react-typescript-starter' },
@@ -26,25 +12,8 @@ async function main() {
         create: {
             name: 'react-typescript-starter',
             displayName: 'React + TypeScript 启动器',
-            description: '使用React 18 + TypeScript + Vite的现代化前端项目模板',
-            category: 'frontend',
-            framework: 'react',
-            language: 'typescript',
-            tags: ['react', 'typescript', 'vite', 'frontend'],
-            isFeatured: true,
-            config: {
-                dependencies: {
-                    'react': '^18.2.0',
-                    'react-dom': '^18.2.0',
-                    'typescript': '^5.0.0'
-                },
-                devDependencies: {
-                    '@types/react': '^18.2.0',
-                    '@types/react-dom': '^18.2.0',
-                    'vite': '^5.0.0'
-                }
-            },
-            createdBy: user.id,
+          description: '使用React 18 + TypeScript + Vite的现代化前端项目模板',
+          framework: 'react',
         },
     });
 
@@ -227,23 +196,8 @@ export default defineConfig({
         create: {
             name: 'vue-typescript-starter',
             displayName: 'Vue + TypeScript 启动器',
-            description: '使用Vue 3 + TypeScript + Vite的现代化前端项目模板',
-            category: 'frontend',
-            framework: 'vue',
-            language: 'typescript',
-            tags: ['vue', 'typescript', 'vite', 'frontend'],
-            isFeatured: true,
-            config: {
-                dependencies: {
-                    'vue': '^3.3.0',
-                    'typescript': '^5.0.0'
-                },
-                devDependencies: {
-                    '@vitejs/plugin-vue': '^4.0.0',
-                    'vite': '^5.0.0'
-                }
-            },
-            createdBy: user.id,
+          description: '使用Vue 3 + TypeScript + Vite的现代化前端项目模板',
+          framework: 'vue',
         },
     });
 
@@ -350,38 +304,6 @@ createApp(App).mount('#app');`,
     }
 
     console.log(`🔧 创建Vue模板文件: ${vueFiles.length} 个`);
-
-    // 创建系统设置
-    const settings = [
-        {
-            key: 'sandbox.max_file_size_mb',
-            value: 10,
-            description: '单个文件最大大小(MB)',
-            isPublic: true,
-        },
-        {
-            key: 'sandbox.max_project_size_mb',
-            value: 100,
-            description: '单个项目最大大小(MB)',
-            isPublic: true,
-        },
-        {
-            key: 'sandbox.session_timeout_minutes',
-            value: 30,
-            description: '会话超时时间(分钟)',
-            isPublic: false,
-        }
-    ];
-
-    for (const setting of settings) {
-        await prisma.systemSetting.upsert({
-            where: { key: setting.key },
-            update: {},
-            create: setting,
-        });
-    }
-
-    console.log(`⚙️  创建系统设置: ${settings.length} 个`);
 
     console.log('✅ 数据库填充完成！');
 }

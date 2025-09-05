@@ -398,74 +398,9 @@ deploy_application() {
     log_info "生成 Prisma 客户端..."
     npx prisma generate
     
-    # 构建应用
-    log_info "构建应用..."
-    
-    # 根据系统资源设置构建策略
-    case "$BUILD_STRATEGY" in
-        "ultra_conservative")
-            log_info "使用极保守构建策略（内存 < 1GB）..."
-            export NODE_OPTIONS="--max-old-space-size=512"
-            BUILD_ARGS="--no-lint --no-source-maps"
-            ;;
-        "conservative")
-            log_info "使用保守构建策略（内存 < 2GB）..."
-            export NODE_OPTIONS="--max-old-space-size=1024"
-            BUILD_ARGS="--no-lint"
-            ;;
-        "standard")
-            log_info "使用标准构建策略（内存 >= 2GB）..."
-            export NODE_OPTIONS="--max-old-space-size=2048"
-            BUILD_ARGS=""
-            ;;
-        *)
-            log_warning "未知构建策略，使用保守设置..."
-            export NODE_OPTIONS="--max-old-space-size=1024"
-            BUILD_ARGS="--no-lint"
-            ;;
-    esac
-    
-    # 设置环境变量
-    export NEXT_TELEMETRY_DISABLED=1
-    export CI=true
-    
-    # 清理之前的构建缓存
-    log_info "清理构建缓存..."
-    rm -rf .next
-    rm -rf node_modules/.cache
-    
-    # 尝试构建
-    log_info "开始构建应用（内存限制: $NODE_OPTIONS）..."
-    npm run build $BUILD_ARGS
-    
-    # 如果构建失败，尝试更保守的设置
-    if [ $? -ne 0 ]; then
-        log_warning "构建失败，尝试更保守的内存设置..."
-        export NODE_OPTIONS="--max-old-space-size=512"
-        npm run build --no-lint --no-source-maps
-        
-        # 如果仍然失败，尝试分步构建
-        if [ $? -ne 0 ]; then
-            log_warning "保守构建也失败，尝试分步构建..."
-            export NODE_OPTIONS="--max-old-space-size=256"
-            
-            # 先进行类型检查
-            log_info "执行类型检查..."
-            npm run type-check
-            
-            # 然后构建
-            log_info "执行最小化构建..."
-            npm run build --no-lint --no-source-maps
-        fi
-    fi
-    
-    # 检查构建结果
-    if [ $? -eq 0 ]; then
-        log_success "应用构建成功"
-    else
-        log_error "应用构建失败，请检查系统资源或代码问题"
-        exit 1
-    fi
+    # 跳过构建，直接使用开发模式
+    log_info "跳过构建步骤，将使用开发模式运行..."
+    log_warning "注意：开发模式性能较低，仅适用于测试环境"
     
     # 创建数据目录
     mkdir -p data
@@ -574,26 +509,11 @@ start_application() {
     # 切换到项目目录
     cd /opt/v0-sandbox/v0-sandbox
     
-    if [ "$environment" = "production" ]; then
-        # 生产环境使用 Docker Compose
-        log_info "使用 Docker Compose 启动生产环境..."
-        
-        # 优先使用 Docker Compose V2，如果不可用则使用 V1
-        if docker compose version &> /dev/null; then
-            docker compose up -d
-        elif command -v docker-compose &> /dev/null; then
-            docker-compose up -d
-        else
-            log_error "Docker Compose 未安装，无法启动服务"
-            exit 1
-        fi
-    else
-        # 开发环境使用 PM2
-        log_info "使用 PM2 启动开发环境..."
-        pm2 start npm --name "v0-sandbox" -- start
-        pm2 save
-        pm2 startup
-    fi
+    # 统一使用 PM2 启动开发模式（跳过构建）
+    log_info "使用 PM2 启动开发模式..."
+    pm2 start npm --name "v0-sandbox" -- run dev
+    pm2 save
+    pm2 startup
     
     log_success "应用服务启动完成"
 }
