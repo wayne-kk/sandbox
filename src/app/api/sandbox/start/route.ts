@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { PORTS, findRunningSandboxPort, findAvailableSandboxPort } from '@/lib/constants/ports';
 
 const execAsync = promisify(exec);
 
@@ -22,24 +23,11 @@ export async function POST() {
             }, { status: 404 });
         }
 
-        // 检查是否已经运行 - 检查多个可能的端口
-        const possiblePorts = [3103, 3001, 3000];
-        let runningPort = null;
-
-        for (const port of possiblePorts) {
-            try {
-                const { stdout } = await execAsync(`lsof -ti:${port}`);
-                if (stdout.trim()) {
-                    runningPort = port;
-                    console.log(`✅ Sandbox 服务器已在运行 (端口 ${port})`);
-                    break;
-                }
-            } catch (error) {
-                // 端口未被占用，继续检查下一个
-            }
-        }
+        // 检查是否已经运行 - 检查 3100-3199 范围
+        const runningPort = await findRunningSandboxPort();
 
         if (runningPort) {
+            console.log(`✅ Sandbox 服务器已在运行 (端口 ${runningPort})`);
             return NextResponse.json({
                 success: true,
                 message: `Sandbox 服务器已在运行`,
@@ -70,8 +58,8 @@ export async function POST() {
         return NextResponse.json({
             success: true,
             message: 'Sandbox 服务器启动中...',
-            port: 3103, // sandbox项目配置的端口
-            url: 'http://localhost:3103'
+            port: PORTS.SANDBOX_DEFAULT, // sandbox项目配置的端口
+            url: `http://localhost:${PORTS.SANDBOX_DEFAULT}`
         });
 
     } catch (error) {
@@ -85,31 +73,24 @@ export async function POST() {
 
 export async function GET() {
     try {
-        // 检查服务器状态 - 检查多个可能的端口
-        const possiblePorts = [3103, 3001, 3000];
+        // 检查服务器状态 - 检查 3100-3199 范围
+        const runningPort = await findRunningSandboxPort();
 
-        for (const port of possiblePorts) {
-            try {
-                const { stdout } = await execAsync(`lsof -ti:${port}`);
-                if (stdout.trim()) {
-                    return NextResponse.json({
-                        success: true,
-                        running: true,
-                        port: port,
-                        url: `http://localhost:${port}`,
-                        message: `Sandbox 服务器正在运行 (端口 ${port})`
-                    });
-                }
-            } catch (error) {
-                // 端口未被占用，继续检查下一个
-            }
+        if (runningPort) {
+            return NextResponse.json({
+                success: true,
+                running: true,
+                port: runningPort,
+                url: `http://localhost:${runningPort}`,
+                message: `Sandbox 服务器正在运行 (端口 ${runningPort})`
+            });
         }
 
         // 没有找到运行中的服务器
         return NextResponse.json({
             success: true,
             running: false,
-            port: 3103, // 默认端口
+            port: PORTS.SANDBOX_DEFAULT, // 默认端口
             message: 'Sandbox 服务器未运行'
         });
     } catch (error) {
@@ -117,7 +98,7 @@ export async function GET() {
         return NextResponse.json({
             success: true,
             running: false,
-            port: 3103,
+            port: PORTS.SANDBOX_DEFAULT,
             message: '无法检查服务器状态，假设未运行'
         });
     }

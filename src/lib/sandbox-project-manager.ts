@@ -2,7 +2,6 @@ import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
-import Docker from 'dockerode';
 
 const execAsync = promisify(exec);
 
@@ -20,13 +19,12 @@ export interface SandboxProject {
 export class SandboxProjectManager {
     private static instance: SandboxProjectManager;
     private projects: Map<string, SandboxProject> = new Map();
-    private docker: Docker;
     private basePort = 3001;
     private maxPort = 3010;
     private usedPorts = new Set<number>();
 
     private constructor() {
-        this.docker = new Docker();
+        // 初始化时不创建 Docker 实例
     }
 
     public static getInstance(): SandboxProjectManager {
@@ -124,52 +122,22 @@ export class SandboxProjectManager {
     }
 
     /**
-     * 创建 Docker 容器
+     * 创建 Docker 容器（简化版本）
      */
     private async createContainer(projectId: string, projectDir: string, port: number): Promise<any> {
-        const containerName = `sandbox-${projectId}`;
-
-        // 构建镜像
-        const imageName = `sandbox-${projectId}:latest`;
-        const dockerfilePath = path.join(projectDir, 'Dockerfile');
-
-        // 复制 Dockerfile
-        await fs.copyFile(path.join(process.cwd(), 'Dockerfile.sandbox'), dockerfilePath);
-
-        // 构建镜像
-        const stream = await this.docker.buildImage({
-            context: projectDir,
-            src: ['.']
-        }, {
-            t: imageName
+        // 简化版本：直接启动开发服务器，不使用 Docker
+        const startCommand = `cd ${projectDir} && npm run dev -- --port ${port}`;
+        
+        const childProcess = spawn('npm', ['run', 'dev', '--', '--port', port.toString()], {
+            cwd: projectDir,
+            stdio: 'pipe'
         });
 
-        // 等待构建完成
-        await new Promise((resolve, reject) => {
-            this.docker.modem.followProgress(stream, (err, res) => {
-                if (err) reject(err);
-                else resolve(res);
-            });
-        });
-
-        // 创建并启动容器
-        const container = await this.docker.createContainer({
-            Image: imageName,
-            name: containerName,
-            ExposedPorts: {
-                [`${port}/tcp`]: {}
-            },
-            PortBindings: {
-                [`${port}/tcp`]: [{ HostPort: port.toString() }]
-            },
-            Env: [`PORT=${port}`],
-            WorkingDir: '/app',
-            Cmd: ['npm', 'run', 'dev']
-        });
-
-        await container.start();
-
-        return container;
+        // 返回一个模拟的容器对象
+        return {
+            id: `sandbox-${projectId}-${Date.now()}`,
+            childProcess
+        };
     }
 
     /**
@@ -201,19 +169,16 @@ export class SandboxProjectManager {
             throw new Error(`项目不存在: ${projectId}`);
         }
 
-        if (project.containerId) {
-            try {
-                const container = this.docker.getContainer(project.containerId);
-                await container.stop();
-                await container.remove();
-            } catch (error) {
-                console.warn(`停止容器失败: ${project.containerId}`, error);
-            }
+        // 简化版本：直接杀死进程
+        try {
+            await execAsync(`pkill -f "sandbox-${projectId}"`);
+        } catch (error) {
+            console.warn(`停止项目进程失败: ${projectId}`, error);
         }
 
         project.status = 'stopped';
         this.releasePort(project.port);
-
+        
         console.log(`🛑 Sandbox 项目已停止: ${projectId}`);
     }
 

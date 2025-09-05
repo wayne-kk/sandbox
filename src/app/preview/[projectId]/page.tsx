@@ -183,7 +183,7 @@ export default function PreviewPage() {
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sandboxUrl, setSandboxUrl] = useState<string>('http://localhost:3103');
+  const [sandboxUrl, setSandboxUrl] = useState<string>('http://localhost:3100');
   const [componentPath, setComponentPath] = useState<string>('');
 
   useEffect(() => {

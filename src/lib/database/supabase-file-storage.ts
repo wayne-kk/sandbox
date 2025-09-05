@@ -105,7 +105,7 @@ export class SupabaseFileStorageManager {
                 throw new Error('复制模板文件失败');
             }
 
-            console.log(\`✨ 项目创建成功: \${project.id} (基于模板: \${template.name})\`);
+            console.log(`✨ 项目创建成功: ${project.id} (基于模板: ${template.name})`);
             return project.id;
         } catch (error) {
             console.error('创建项目失败:', error);
