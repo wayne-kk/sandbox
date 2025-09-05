@@ -362,7 +362,7 @@ deploy_application() {
     # 如果是首次部署，克隆项目
     if [ ! -d "v0-sandbox" ]; then
         log_info "克隆项目代码..."
-        git clone <your-repository-url> v0-sandbox
+        git clone https://github.com/wayne-kk/sandbox.git v0-sandbox
     else
         log_info "更新项目代码..."
         cd v0-sandbox
