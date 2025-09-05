@@ -23,7 +23,9 @@ import {
   Palette,
   Smartphone,
   Monitor,
-  Globe
+  Globe,
+  ExternalLink,
+  Play
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -57,6 +59,11 @@ interface GenerationResult {
     dependencies: string[];
     hasConfigChanges: boolean;
     conversationId?: string;
+    componentInfo?: {
+      name: string;
+      path: string;
+      previewUrl: string;
+    };
     evolution?: {
       suggestions: {
         nextSteps: Array<{
@@ -83,60 +90,13 @@ interface GenerationResult {
   error?: string;
 }
 
-const EXAMPLE_PROMPTS = [
-  {
-    icon: Lightbulb,
-    title: "登录页面",
-    prompt: "创建一个现代化的用户登录页面，包含邮箱密码输入框、记住我选项、忘记密码链接和社交登录按钮",
-    category: "认证",
-    difficulty: "简单",
-    estimatedTime: "2-3分钟"
-  },
-  {
-    icon: Zap,
-    title: "数据仪表板",
-    prompt: "设计一个数据分析仪表板，包含图表卡片、统计数字、进度条和数据表格",
-    category: "数据展示",
-    difficulty: "中等",
-    estimatedTime: "5-7分钟"
-  },
-  {
-    icon: FileText,
-    title: "博客文章卡片",
-    prompt: "创建一个博客文章列表页面，每个文章卡片包含标题、摘要、作者、发布时间和标签",
-    category: "内容展示",
-    difficulty: "简单",
-    estimatedTime: "3-4分钟"
-  },
-  {
-    icon: Code2,
-    title: "设置页面",
-    prompt: "设计一个用户设置页面，包含个人信息编辑、通知设置、隐私设置和账户管理",
-    category: "用户管理",
-    difficulty: "中等",
-    estimatedTime: "4-6分钟"
-  },
-  {
-    icon: Palette,
-    title: "主题切换器",
-    prompt: "创建一个支持明暗主题切换的组件，包含切换按钮、主题预览和自动检测系统主题",
-    category: "主题系统",
-    difficulty: "中等",
-    estimatedTime: "4-5分钟"
-  },
-  {
-    icon: Smartphone,
-    title: "移动端导航",
-    prompt: "设计一个响应式的移动端导航菜单，包含汉堡菜单、滑动抽屉和触摸友好的交互",
-    category: "导航",
-    difficulty: "中等",
-    estimatedTime: "5-6分钟"
-  }
-];
-
 const FEATURE_TAGS = [
   "响应式设计", "TypeScript", "Tailwind CSS", "无障碍访问", "动画效果", 
   "状态管理", "表单验证", "错误处理", "加载状态", "国际化"
+];
+
+const COMPONENT_TYPES = [
+  { value: 'component', label: 'UI组件', description: '可复用的界面组件' }
 ];
 
 export default function DifyUIGenerator({ 
@@ -149,10 +109,11 @@ export default function DifyUIGenerator({
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [progress, setProgress] = useState(0);
   const [generationLog, setGenerationLog] = useState<string[]>([]);
-  const [showExamples, setShowExamples] = useState(true);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
-  const [generationHistory, setGenerationHistory] = useState<GenerationResult[]>([]);
-  const [activeTab, setActiveTab] = useState('generator');
+  const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [componentType, setComponentType] = useState<string>('component');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -168,13 +129,6 @@ export default function DifyUIGenerator({
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setGenerationLog(prev => [...prev, `[${timestamp}] ${message}`]);
-  };
-
-  // 处理提示词选择
-  const handleExampleSelect = (examplePrompt: string) => {
-    setPrompt(examplePrompt);
-    setShowExamples(false);
-    textareaRef.current?.focus();
   };
 
   // 处理特性标签选择
@@ -194,7 +148,9 @@ export default function DifyUIGenerator({
     setProgress(0);
     setResult(null);
     setGenerationLog([]);
-    setShowExamples(false);
+    // 重置预览状态，确保新生成的组件有新的预览URL
+    setPreviewStatus('idle');
+    setPreviewUrl('');
 
     try {
       addLog('🤖 开始 AI 代码生成...');
@@ -224,7 +180,9 @@ export default function DifyUIGenerator({
           prompt: enhancedPrompt,
           projectType: 'nextjs',
           projectId,
-          features: selectedFeatures
+          features: selectedFeatures,
+          component_type: componentType,
+          useVectorContext: false
         })
       });
 
@@ -250,15 +208,18 @@ export default function DifyUIGenerator({
           addLog('⚠️ 检测到配置文件变化，项目可能需要重启');
         }
 
-        // 添加到历史记录
-        setGenerationHistory(prev => [data, ...prev.slice(0, 9)]);
-
         // 触发回调
         if (onFilesGenerated && data.data?.files) {
           onFilesGenerated(data.data.files);
         }
 
         addLog('🎉 代码已成功写入 sandbox 目录！');
+        
+        // 自动启动预览
+        addLog('🚀 正在自动启动预览...');
+        setTimeout(() => {
+          handleStartPreview(data);
+        }, 1000);
       } else {
         addLog(`❌ 生成失败: ${data.error}`);
       }
@@ -282,6 +243,9 @@ export default function DifyUIGenerator({
   // 重新生成
   const handleRegenerate = () => {
     if (prompt.trim()) {
+      // 重置预览相关状态
+      setPreviewStatus('idle');
+      setPreviewUrl('');
       handleGenerate();
     }
   };
@@ -291,8 +255,10 @@ export default function DifyUIGenerator({
     setPrompt('');
     setResult(null);
     setGenerationLog([]);
-    setShowExamples(true);
     setSelectedFeatures([]);
+    setComponentType('component');
+    setPreviewStatus('idle');
+    setPreviewUrl('');
     textareaRef.current?.focus();
   };
 
@@ -306,7 +272,6 @@ export default function DifyUIGenerator({
   const handleDownloadFiles = () => {
     if (!result?.data?.files) return;
     
-    // 简单的文件下载实现，不使用JSZip
     result.data.files.forEach((file: GeneratedFile) => {
       const blob = new Blob([file.content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
@@ -320,59 +285,160 @@ export default function DifyUIGenerator({
     addLog('📥 文件下载完成');
   };
 
+  // 启动预览
+  const handleStartPreview = async (resultData?: GenerationResult) => {
+    const currentResult = resultData || result;
+    if (!currentResult?.data?.files || !projectId) return;
+
+    setPreviewStatus('loading');
+    addLog('🚀 正在启动 Sandbox 预览...');
+
+    try {
+      const response = await fetch('/api/sandbox/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sandbox 启动失败: ${response.statusText}`);
+      }
+
+      const sandboxData = await response.json();
+      
+      if (sandboxData.success) {
+        const baseUrl = sandboxData.url || `http://localhost:${sandboxData.port || 3100}`;
+        
+        let finalPreviewUrl = baseUrl;
+        if (currentResult?.data?.componentInfo?.previewUrl) {
+          finalPreviewUrl = `${baseUrl}${currentResult.data.componentInfo.previewUrl}`;
+          addLog(`🎯 组件预览地址: ${finalPreviewUrl}`);
+        } else {
+          addLog(`🌐 项目预览地址: ${finalPreviewUrl}`);
+        }
+        
+        setPreviewUrl(finalPreviewUrl);
+        setPreviewStatus('ready');
+        addLog('✅ Sandbox 服务器启动中...');
+        addLog('⏳ 请稍等几秒钟让服务器完全启动');
+      } else {
+        throw new Error(sandboxData.error || 'Sandbox 启动失败');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Sandbox 启动失败';
+      setPreviewStatus('error');
+      addLog(`❌ Sandbox 启动失败: ${errorMessage}`);
+    }
+  };
+
+  // 刷新预览
+  const handleRefreshPreview = async () => {
+    if (!result?.data?.files || !projectId) return;
+
+    setPreviewStatus('loading');
+    addLog('🔄 正在刷新预览...');
+
+    try {
+      const files: { [path: string]: string } = {};
+      result.data.files.forEach((file: GeneratedFile) => {
+        files[file.path] = file.content;
+      });
+
+      const response = await fetch(`/api/preview/${projectId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'current-user'
+        },
+        body: JSON.stringify({ files })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setPreviewStatus('ready');
+        addLog('✅ 预览已刷新');
+      } else {
+        throw new Error(data.error || '刷新预览失败');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '预览刷新失败';
+      setPreviewStatus('error');
+      addLog(`❌ 预览刷新失败: ${errorMessage}`);
+    }
+  };
+
+  // 在新窗口打开预览
+  const handleOpenPreviewInNewWindow = () => {
+    if (previewUrl) {
+      window.open(previewUrl, '_blank');
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="generator">🎨 组件生成器</TabsTrigger>
-          <TabsTrigger value="examples">💡 示例模板</TabsTrigger>
-          <TabsTrigger value="history">📚 生成历史</TabsTrigger>
-        </TabsList>
-
-        {/* 组件生成器 */}
-        <TabsContent value="generator" className="space-y-6">
-          {renderComponentGenerator()}
-        </TabsContent>
-
-        {/* 示例模板 */}
-        <TabsContent value="examples" className="space-y-6">
-          {renderExamples()}
-        </TabsContent>
-
-        {/* 生成历史 */}
-        <TabsContent value="history" className="space-y-6">
-          {renderHistory()}
-        </TabsContent>
-      </Tabs>
+    <div className="h-full flex flex-col space-y-6">
+      {/* 生成器区域 */}
+      <div className="flex-shrink-0">
+        {renderComponentGenerator()}
+      </div>
+      
+      {/* 预览区域 - 占据剩余空间 */}
+      <div className="flex-1 min-h-0">
+        {renderInlinePreview()}
+      </div>
     </div>
   );
 
   function renderComponentGenerator() {
     return (
-      <>
+      <div className="space-y-4">
         {/* 输入区域 */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-blue-50/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-xl">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-lg">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-                <Code2 className="w-6 h-6 text-white" />
+                <Code2 className="w-5 h-5 text-white" />
               </div>
-              描述您想要的 UI 界面
+              UI 组件生成器
             </CardTitle>
-            <p className="text-gray-600">
-              详细描述您的需求，AI 将生成符合设计规范的 React 组件
+            <p className="text-gray-600 text-sm">
+              描述您想要的 UI 界面，AI 将生成符合设计规范的 React 组件
             </p>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4">
             <div className="space-y-4">
               <Textarea
                 ref={textareaRef}
                 placeholder="例如：创建一个用户个人资料页面，包含头像、基本信息编辑表单、技能标签和社交媒体链接。要求响应式设计，支持明暗主题切换，包含加载状态和错误处理..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[140px] resize-none text-base leading-relaxed"
+                className="min-h-[120px] resize-none text-base leading-relaxed"
                 disabled={isGenerating}
               />
+
+              {/* 组件类型选择 */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-700">
+                  组件类型 <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {COMPONENT_TYPES.map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => setComponentType(type.value)}
+                      className={`p-3 rounded-lg border-2 text-left transition-all duration-200 ${
+                        componentType === type.value
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="font-medium text-sm mb-1">{type.label}</div>
+                      <div className="text-xs text-gray-500">{type.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* 特性选择 */}
               <div className="space-y-3">
@@ -399,7 +465,7 @@ export default function DifyUIGenerator({
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <Badge variant="outline" className="text-sm">
                   <Monitor className="w-3 h-3 mr-1" />
                   项目: {projectId}
@@ -411,6 +477,10 @@ export default function DifyUIGenerator({
                 <Badge variant="outline" className="text-sm">
                   <Globe className="w-3 h-3 mr-1" />
                   TypeScript
+                </Badge>
+                <Badge variant="default" className="text-sm bg-blue-100 text-blue-700 border-blue-200">
+                  <Layers className="w-3 h-3 mr-1" />
+                  类型: {COMPONENT_TYPES.find(t => t.value === componentType)?.label || 'UI组件'}
                 </Badge>
               </div>
 
@@ -589,7 +659,7 @@ export default function DifyUIGenerator({
                   </div>
 
                   {/* 操作按钮 */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <Button
                       onClick={handleDownloadFiles}
                       variant="outline"
@@ -598,20 +668,61 @@ export default function DifyUIGenerator({
                       <Download className="w-4 h-4 mr-2" />
                       下载文件
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="hover:bg-blue-50 hover:border-blue-200"
-                    >
-                      <Share2 className="w-4 h-4 mr-2" />
-                      分享结果
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="hover:bg-purple-50 hover:border-purple-200"
-                    >
-                      <Star className="w-4 h-4 mr-2" />
-                      收藏模板
-                    </Button>
+                    
+                    {/* 预览相关按钮 */}
+                    {previewStatus === 'idle' && (
+                      <Button
+                        onClick={() => handleStartPreview()}
+                        variant="outline"
+                        className="hover:bg-blue-50 hover:border-blue-200"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        启动预览
+                      </Button>
+                    )}
+                    
+                    {previewStatus === 'loading' && (
+                      <Button
+                        disabled
+                        variant="outline"
+                        className="opacity-50"
+                      >
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        预览启动中...
+                      </Button>
+                    )}
+                    
+                    {previewStatus === 'ready' && (
+                      <>
+                        <Button
+                          onClick={handleRefreshPreview}
+                          variant="outline"
+                          className="hover:bg-orange-50 hover:border-orange-200"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          刷新预览
+                        </Button>
+                        <Button
+                          onClick={handleOpenPreviewInNewWindow}
+                          variant="outline"
+                          className="hover:bg-purple-50 hover:border-purple-200"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          新窗口预览
+                        </Button>
+                      </>
+                    )}
+                    
+                    {previewStatus === 'error' && (
+                      <Button
+                        onClick={() => handleStartPreview()}
+                        variant="outline"
+                        className="hover:bg-red-50 hover:border-red-200 text-red-600"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        重试预览
+                      </Button>
+                    )}
                   </div>
 
                   {/* 详细信息 */}
@@ -695,173 +806,182 @@ export default function DifyUIGenerator({
             </CardContent>
           </Card>
         )}
-      </>
-    );
-  }
-
-  function renderExamples() {
-    return (
-      <div className="space-y-6">
-        <div className="text-center mb-8">
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">💡 快速开始模板</h3>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            选择预定义的模板快速开始，或基于这些示例进行自定义修改
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {EXAMPLE_PROMPTS.map((example, index) => (
-            <Card 
-              key={index} 
-              className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group hover:scale-105"
-              onClick={() => handleExampleSelect(example.prompt)}
-            >
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="p-3 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl group-hover:from-blue-200 group-hover:to-purple-200 transition-colors">
-                    <example.icon className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <Badge 
-                      variant="secondary" 
-                      className="text-xs"
-                    >
-                      {example.category}
-                    </Badge>
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ${
-                        example.difficulty === '简单' ? 'text-green-600 border-green-200' :
-                        example.difficulty === '中等' ? 'text-yellow-600 border-yellow-200' :
-                        'text-red-600 border-red-200'
-                      }`}
-                    >
-                      {example.difficulty}
-                    </Badge>
-                  </div>
-                </div>
-                <CardTitle className="text-lg group-hover:text-blue-600 transition-colors">
-                  {example.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
-                  {example.prompt}
-                </p>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {example.estimatedTime}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" />
-                    成功率: 95%
-                  </span>
-                </div>
-                <Button 
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                  size="sm"
-                >
-                  使用此模板
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </div>
     );
   }
 
-  function renderHistory() {
+  function renderInlinePreview() {
     return (
-      <div className="space-y-6">
-        <div className="text-center mb-8">
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">📚 生成历史</h3>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            查看之前的生成记录，快速重新生成或基于历史结果进行改进
-          </p>
+      <div className="h-full flex flex-col">
+        {/* 设备选择工具栏 */}
+        {previewStatus === 'ready' && (
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700">设备预览:</span>
+              <div className="flex items-center gap-1 bg-white rounded border">
+                <button
+                  onClick={() => setPreviewDevice('desktop')}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    previewDevice === 'desktop' 
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title="桌面端 (1200px+)"
+                >
+                  <Monitor className="w-4 h-4 mr-1 inline" />
+                  桌面端
+                </button>
+                <button
+                  onClick={() => setPreviewDevice('tablet')}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    previewDevice === 'tablet' 
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title="平板端 (768px - 1024px)"
+                >
+                  <Smartphone className="w-4 h-4 mr-1 inline" />
+                  平板端
+                </button>
+                <button
+                  onClick={() => setPreviewDevice('mobile')}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    previewDevice === 'mobile' 
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title="移动端 (< 768px)"
+                >
+                  <Smartphone className="w-4 h-4 mr-1 inline" />
+                  移动端
+                </button>
+              </div>
+            </div>
+            
+            {previewUrl && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <button
+                  onClick={handleOpenPreviewInNewWindow}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                  title="在新窗口打开"
+                >
+                  <ExternalLink className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 预览内容区域 */}
+        <div className="relative h-[800px]">
+          {previewStatus === 'idle' && (
+            <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="text-center p-8">
+                <div className="p-4 bg-white rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg">
+                  <Play className="w-8 h-8 text-blue-500" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-800 mb-2">准备预览您的组件</h4>
+                <p className="text-gray-600 mb-4 text-sm">
+                  点击"启动预览"按钮来查看生成的组件效果
+                </p>
+                <Button
+                  onClick={() => handleStartPreview()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  启动预览
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {previewStatus === 'loading' && (
+            <div className="h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border">
+              <div className="text-center p-8">
+                <div className="p-4 bg-white rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg">
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-800 mb-2">预览启动中...</h4>
+                <p className="text-gray-600 mb-4 text-sm">正在构建和启动预览环境</p>
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {previewStatus === 'ready' && previewUrl && (
+            <div className="h-full border rounded-lg overflow-hidden bg-white shadow-sm">
+              {/* 预览iframe容器 */}
+              <div 
+                className="relative bg-gray-100 h-full"
+                style={{
+                  maxWidth: previewDevice === 'desktop' ? '100%' : 
+                           previewDevice === 'tablet' ? '768px' : '375px',
+                  margin: previewDevice === 'desktop' ? '0' : '0 auto'
+                }}
+              >
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full border-0"
+                  title="组件预览"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
+                  style={{ backgroundColor: 'white' }}
+                />
+                
+                {/* 设备边框装饰 */}
+                {previewDevice !== 'desktop' && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 border-8 border-gray-800 rounded-3xl" />
+                    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-16 h-1 bg-gray-800 rounded-full" />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {previewStatus === 'error' && (
+            <div className="h-full flex items-center justify-center bg-gradient-to-br from-red-50 to-pink-50 rounded-lg border border-red-200">
+              <div className="text-center p-8">
+                <div className="p-4 bg-white rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg">
+                  <AlertCircle className="w-8 h-8 text-red-500" />
+                </div>
+                <h4 className="text-lg font-semibold text-red-800 mb-2">预览启动失败</h4>
+                <p className="text-red-600 mb-4 text-sm max-w-md mx-auto">
+                  预览环境启动时遇到问题，可能是网络连接或服务配置问题
+                </p>
+                <Button
+                  onClick={() => handleStartPreview()}
+                  variant="outline"
+                  className="border-red-300 text-red-600 hover:bg-red-50"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  重试预览
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {generationHistory.length === 0 ? (
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-gray-50 to-blue-50">
-            <CardContent className="p-12 text-center">
-              <div className="p-4 bg-gray-200 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <FileText className="w-8 h-8 text-gray-500" />
+        {/* 预览提示信息 */}
+        {previewStatus === 'ready' && (
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-3">
+              <div className="p-1 bg-blue-100 rounded">
+                <Lightbulb className="w-4 h-4 text-blue-600" />
               </div>
-              <h4 className="text-lg font-medium text-gray-700 mb-2">暂无生成记录</h4>
-              <p className="text-gray-500">开始生成您的第一个组件，这里将显示生成历史</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {generationHistory.map((item, index) => (
-              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-all duration-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      {item.success ? (
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <AlertCircle className="w-5 h-5 text-red-600" />
-                      )}
-                      <div>
-                        <h4 className="font-medium text-gray-900">
-                          {item.success ? '生成成功' : '生成失败'}
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          {new Date().toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setPrompt(item.data?.description || '');
-                          setActiveTab('generator');
-                        }}
-                      >
-                        重新生成
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setResult(item);
-                          setActiveTab('generator');
-                        }}
-                      >
-                        查看详情
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {item.data && (
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div className="text-center p-3 bg-gray-50 rounded-lg">
-                        <div className="text-lg font-bold text-blue-600">
-                          {item.data.filesGenerated}
-                        </div>
-                        <div className="text-gray-600">文件数量</div>
-                      </div>
-                      <div className="text-center p-3 bg-gray-50 rounded-lg">
-                        <div className="text-lg font-bold text-green-600">
-                          {item.data.features.length}
-                        </div>
-                        <div className="text-gray-600">功能特性</div>
-                      </div>
-                      <div className="text-center p-3 bg-gray-50 rounded-lg">
-                        <div className="text-lg font-bold text-purple-600">
-                          {item.data.dependencies.length}
-                        </div>
-                        <div className="text-gray-600">依赖包</div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+              <div>
+                <h5 className="font-medium text-blue-900 mb-2">预览功能说明</h5>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• 预览会实时显示生成的组件效果，支持响应式设计</li>
+                  <li>• 可以切换不同设备尺寸查看适配效果</li>
+                  <li>• 基于预览效果调整提示词，点击"重新生成"进行优化</li>
+                  <li>• 预览地址可以在新窗口中打开，方便分享给他人</li>
+                </ul>
+              </div>
+            </div>
           </div>
         )}
       </div>

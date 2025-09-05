@@ -67,9 +67,10 @@ export class EmbeddingService {
 
         // 使用 Azure OpenAI 配置 (仅用于向量嵌入)
         this.azureOpenAI = new AzureOpenAI({
+            baseURL: '',
             apiKey: process.env.AZURE_OPENAI_API_KEY,
-            baseURL: process.env.AZURE_OPENAI_ENDPOINT,
-            apiVersion: process.env.AZURE_OPENAI_API_VERSION || "2024-02-01"
+            endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+            apiVersion: "2024-12-01-preview"  // 使用预览版本
         });
 
         // 使用 OpenAI 配置 (用于聊天对话)
@@ -83,9 +84,9 @@ export class EmbeddingService {
         });
     }
 
-    /**
+        /**
      * 生成文本向量嵌入
-     * 使用 Azure OpenAI text-embedding-3-large 模型
+     * 使用 Azure OpenAI text-embedding-3-large 模型，生成1536维向量
      */
     async generateEmbedding(text: string): Promise<number[]> {
         try {
@@ -96,8 +97,9 @@ export class EmbeddingService {
                 : text;
 
             const response = await this.azureOpenAI.embeddings.create({
-                model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME || "text-embedding-3-large",
+                model: "text-embedding-3-large",
                 input: truncatedText,
+                dimensions: 1536, // 指定生成1536维向量以匹配数据库schema
             });
 
             return response.data[0].embedding;
@@ -107,9 +109,9 @@ export class EmbeddingService {
         }
     }
 
-    /**
+        /**
      * 批量生成文本向量嵌入
-     * 使用 Azure OpenAI text-embedding-3-large 模型
+     * 使用 Azure OpenAI text-embedding-3-large 模型，生成1536维向量
      */
     async generateBatchEmbeddings(texts: string[]): Promise<number[][]> {
         try {
@@ -128,6 +130,7 @@ export class EmbeddingService {
             const response = await this.azureOpenAI.embeddings.create({
                 model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME || "text-embedding-3-large",
                 input: processedTexts,
+                dimensions: 1536, // 指定生成1536维向量以匹配数据库schema
             });
 
             return response.data.map((item: any) => item.embedding);
@@ -143,10 +146,15 @@ export class EmbeddingService {
     async storeCodeEmbedding(data: Omit<CodeEmbedding, 'id' | 'embedding'>): Promise<string> {
         try {
             // 生成描述 (如果没有提供)
-            const description = data.description || await this.generateCodeDescription(data.code_snippet);
+            const description = data.description || await this.generateCodeDescription(
+                data.code_snippet,
+                data.file_path,
+                data.content_type,
+                data.metadata
+            );
 
             // 生成向量
-            const embeddingText = `${description}\n\n文件路径: ${data.file_path}\n类型: ${data.content_type}\n\n${data.code_snippet}`;
+            const embeddingText = this.buildEnhancedEmbeddingText(data, description);
             console.log('description', description, 'embeddingText', embeddingText);
             const embedding = await this.generateEmbedding(embeddingText);
 
@@ -192,10 +200,15 @@ export class EmbeddingService {
             const processedData: Array<Omit<CodeEmbedding, 'id' | 'embedding'> & { description: string; tags: string[] }> = [];
 
             for (const data of dataArray) {
-                const description = data.description || await this.generateCodeDescription(data.code_snippet);
+                const description = data.description || await this.generateCodeDescription(
+                    data.code_snippet,
+                    data.file_path,
+                    data.content_type,
+                    data.metadata
+                );
                 const tags = data.tags.length > 0 ? data.tags : this.extractTags(data.code_snippet, data.content_type);
 
-                const embeddingText = `${description}\n\n文件路径: ${data.file_path}\n类型: ${data.content_type}\n\n${data.code_snippet}`;
+                const embeddingText = this.buildEnhancedEmbeddingText(data, description);
                 texts.push(embeddingText);
 
                 processedData.push({
@@ -506,20 +519,32 @@ export class EmbeddingService {
     /**
      * 生成代码描述
      */
-    private async generateCodeDescription(code: string): Promise<string> {
+    private async generateCodeDescription(code: string, filePath?: string, contentType?: string, metadata?: any): Promise<string> {
         try {
-            // 使用 OpenAI 生成简洁描述
+            // 构建更丰富的上下文信息
+            const contextInfo = this.buildContextInfo(code, filePath, contentType, metadata);
+
+            // 使用 OpenAI 生成更智能的描述
             const response = await this.openAI.chat.completions.create({
                 model: process.env.OPENAI_MODEL || "gpt-4.1",
                 messages: [{
                     role: "user",
-                    content: `请用一句话简洁描述这段代码的功能（不超过50字）：\n\n${code.substring(0, 800)}`
+                    content: `请分析这段代码并生成一个包含以下信息的描述（不超过80字）：
+1. 代码的主要功能
+2. 在组件/项目中的作用
+3. 如果是工具函数，说明其用途
+
+代码信息：
+${contextInfo}
+
+代码内容：
+${code.substring(0, 1000)}`
                 }],
-                max_tokens: 100,
+                max_tokens: 150,
                 temperature: 0.3
             });
 
-            return response.choices[0].message?.content?.trim() || "代码片段";
+            return response.choices[0].message?.content?.trim() || this.extractSimpleDescription(code);
         } catch (error) {
             console.warn('生成代码描述失败，使用默认描述:', error);
             // 回退到简单的代码分析
@@ -528,12 +553,170 @@ export class EmbeddingService {
     }
 
     /**
+     * 构建上下文信息
+     */
+    private buildContextInfo(code: string, filePath?: string, contentType?: string, metadata?: any): string {
+        const contextParts: string[] = [];
+
+        if (filePath) {
+            contextParts.push(`文件路径: ${filePath}`);
+        }
+
+        if (contentType) {
+            contextParts.push(`类型: ${contentType}`);
+        }
+
+        if (metadata?.name) {
+            contextParts.push(`名称: ${metadata.name}`);
+        }
+
+        // 分析代码特征
+        const features = this.analyzeCodeFeatures(code);
+        if (features.length > 0) {
+            contextParts.push(`特征: ${features.join(', ')}`);
+        }
+
+        return contextParts.join('\n');
+    }
+
+    /**
+     * 分析代码特征
+     */
+    private analyzeCodeFeatures(code: string): string[] {
+        const features: string[] = [];
+
+        // 工具函数特征
+        if (code.includes('classNames') || code.includes('cn') || code.includes('clsx')) {
+            features.push('CSS类名工具');
+        }
+
+        if (code.includes('filter(Boolean)') || code.includes('join(')) {
+            features.push('字符串处理');
+        }
+
+        // React相关特征
+        if (code.includes('useState') || code.includes('useEffect')) {
+            features.push('React Hooks');
+        }
+
+        if (code.includes('className') || code.includes('tailwind')) {
+            features.push('样式处理');
+        }
+
+        // 数据处理特征
+        if (code.includes('map(') || code.includes('filter(') || code.includes('reduce(')) {
+            features.push('数据处理');
+        }
+
+        // 异步特征
+        if (code.includes('async') || code.includes('await')) {
+            features.push('异步处理');
+        }
+
+        // 验证特征
+        if (code.includes('validate') || code.includes('isValid') || code.includes('check')) {
+            features.push('数据验证');
+        }
+
+        return features;
+    }
+
+    /**
+     * 构建增强的向量化文本
+     */
+    private buildEnhancedEmbeddingText(data: Omit<CodeEmbedding, 'id' | 'embedding'>, description: string): string {
+        const parts: string[] = [];
+
+        // 1. 描述信息
+        parts.push(`描述: ${description}`);
+
+        // 2. 文件信息
+        parts.push(`文件: ${data.file_path}`);
+        parts.push(`类型: ${data.content_type}`);
+
+        // 3. 元数据信息
+        if (data.metadata?.name) {
+            parts.push(`名称: ${data.metadata.name}`);
+        }
+
+        if (data.metadata?.language) {
+            parts.push(`语言: ${data.metadata.language}`);
+        }
+
+        if (data.metadata?.lineStart && data.metadata?.lineEnd) {
+            parts.push(`位置: 第${data.metadata.lineStart}-${data.metadata.lineEnd}行`);
+        }
+
+        // 4. 标签信息
+        if (data.tags.length > 0) {
+            parts.push(`标签: ${data.tags.join(', ')}`);
+        }
+
+        // 5. 代码特征分析
+        const features = this.analyzeCodeFeatures(data.code_snippet);
+        if (features.length > 0) {
+            parts.push(`特征: ${features.join(', ')}`);
+        }
+
+        // 6. 使用场景分析
+        const usageContext = this.analyzeUsageContext(data.code_snippet, data.content_type);
+        if (usageContext) {
+            parts.push(`用途: ${usageContext}`);
+        }
+
+        // 7. 代码内容
+        parts.push(`\n代码:\n${data.code_snippet}`);
+
+        return parts.join('\n');
+    }
+
+    /**
+     * 分析使用场景
+     */
+    private analyzeUsageContext(code: string, contentType: string): string | null {
+        // 根据代码内容分析使用场景
+        if (code.includes('classNames') || code.includes('cn')) {
+            return 'CSS类名条件组合，用于动态样式控制';
+        }
+
+        if (code.includes('useState') && code.includes('setMobileOpen')) {
+            return '移动端菜单状态管理';
+        }
+
+        if (code.includes('onClick') && code.includes('setMobileOpen')) {
+            return '移动端菜单切换控制';
+        }
+
+        if (code.includes('onMouseEnter') && code.includes('onMouseLeave')) {
+            return '鼠标悬停交互控制';
+        }
+
+        if (code.includes('form') && code.includes('onSubmit')) {
+            return '表单提交处理';
+        }
+
+        if (code.includes('Link') && code.includes('href')) {
+            return '导航链接组件';
+        }
+
+        if (code.includes('Search') && code.includes('input')) {
+            return '搜索功能实现';
+        }
+
+        if (code.includes('ShoppingCart') || code.includes('User')) {
+            return '用户界面图标按钮';
+        }
+
+        return null;
+    }
+
+    /**
      * 生成上下文摘要
      */
     private async generateContextSummary(content: string, contextType: string): Promise<string> {
         try {
             const response = await this.openAI.chat.completions.create({
-                model: process.env.OPENAI_MODEL || "gpt-4",
+                model: process.env.OPENAI_MODEL || "gpt-4.1",
                 messages: [{
                     role: "user",
                     content: `请总结这个${contextType}的关键信息（不超过100字）：\n\n${content.substring(0, 1000)}`
@@ -619,7 +802,7 @@ export class EmbeddingService {
     getAzureOpenAIConfig() {
         return {
             endpoint: process.env.AZURE_OPENAI_ENDPOINT,
-            apiVersion: process.env.AZURE_OPENAI_API_VERSION || "2024-02-01",
+            apiVersion: "2024-12-01-preview",
             embeddingModel: process.env.AZURE_OPENAI_DEPLOYMENT_NAME || "text-embedding-3-large"
         };
     }

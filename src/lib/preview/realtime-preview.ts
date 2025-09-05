@@ -46,17 +46,9 @@ export class RealtimePreviewManager {
             let previewUrl: string;
             let containerId: string | undefined;
 
-            if (framework === 'vanilla') {
-                // 直接HTML预览
-                previewUrl = await this.createStaticPreview(projectId, files);
-            } else {
-                // 容器化预览 (React/Vue)
-                const containerResult = await this.createContainerPreview(projectId, files, framework);
-                previewUrl = containerResult.url;
-                containerId = containerResult.containerId;
-                session.containerId = containerId;
-                session.port = containerResult.port;
-            }
+            // 直接使用sandbox目录进行预览
+            previewUrl = `/preview/${projectId}/`;
+            console.log(`📁 使用sandbox预览模式: ${previewUrl}`);
 
             // 更新会话状态
             session.status = 'running';
@@ -178,17 +170,122 @@ export class RealtimePreviewManager {
         projectId: string,
         files: { [path: string]: string }
     ): Promise<string> {
-        // 创建临时预览目录
-        const previewDir = `/tmp/preview/${projectId}`;
+        try {
+            const fs = await import('fs/promises');
+            const path = await import('path');
 
-        // 写入文件到预览目录
-        for (const [filePath, content] of Object.entries(files)) {
-            const fullPath = `${previewDir}/${filePath}`;
-            // 这里需要实际的文件系统操作
-            console.log(`📄 创建文件: ${fullPath}`);
+            // 创建临时预览目录
+            const previewDir = path.join(process.cwd(), 'temp', 'preview', projectId);
+            await fs.mkdir(previewDir, { recursive: true });
+
+            // 写入文件到预览目录
+            for (const [filePath, content] of Object.entries(files)) {
+                const fullPath = path.join(previewDir, filePath);
+                const dirPath = path.dirname(fullPath);
+
+                // 确保目录存在
+                await fs.mkdir(dirPath, { recursive: true });
+
+                // 写入文件
+                await fs.writeFile(fullPath, content, 'utf-8');
+                console.log(`📄 创建预览文件: ${fullPath}`);
+            }
+
+            // 创建一个简单的HTML入口文件
+            const indexHtml = this.generateIndexHtml(files);
+            const indexPath = path.join(previewDir, 'index.html');
+            await fs.writeFile(indexPath, indexHtml, 'utf-8');
+
+            console.log(`✅ 静态预览创建完成: ${previewDir}`);
+            return `/preview/${projectId}/`;
+        } catch (error) {
+            console.error('创建静态预览失败:', error);
+            throw new Error(`创建静态预览失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        }
+    }
+
+    /**
+     * 生成简单的HTML入口文件
+     */
+    private generateIndexHtml(files: { [path: string]: string }): string {
+        // 查找主要的React组件文件
+        const mainComponent = Object.keys(files).find(file =>
+            file.includes('page.tsx') ||
+            file.includes('App.tsx') ||
+            file.includes('index.tsx')
+        );
+
+        if (mainComponent) {
+            return `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>组件预览</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .preview-container { max-width: 1200px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div id="root" class="preview-container">
+        <div style="text-align: center; padding: 50px; color: #666;">
+            <h2>组件预览</h2>
+            <p>正在加载组件...</p>
+        </div>
+    </div>
+    
+    <script type="text/babel">
+        // 这里可以添加组件代码
+        const { useState, useEffect } = React;
+        
+        function PreviewApp() {
+            return (
+                <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
+                    <h3>组件预览</h3>
+                    <p>这是一个简单的预览界面。实际的组件代码需要进一步处理。</p>
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<PreviewApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>`;
         }
 
-        return `/preview/${projectId}/`;
+        // 如果没有找到React组件，返回简单的HTML
+        return `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件预览</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .file-list { max-width: 800px; margin: 0 auto; }
+        .file-item { padding: 10px; border-bottom: 1px solid #eee; }
+        .file-name { font-weight: bold; color: #333; }
+        .file-size { color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="file-list">
+        <h2>生成的文件列表</h2>
+        ${Object.keys(files).map(fileName => `
+            <div class="file-item">
+                <div class="file-name">${fileName}</div>
+                <div class="file-size">${files[fileName].length} 字符</div>
+            </div>
+        `).join('')}
+    </div>
+</body>
+</html>`;
     }
 
     /**
@@ -199,28 +296,26 @@ export class RealtimePreviewManager {
         files: { [path: string]: string },
         framework: 'react' | 'vue'
     ): Promise<{ url: string; containerId: string; port: number }> {
-        // 这里集成之前的Docker管理器
-        const dockerManager = await import('../iframe-optimized-docker');
+        try {
+            // 导入Docker管理器
+            const { IframeOptimizedDockerManager } = await import('../iframe-optimized-docker');
+            const dockerManager = new IframeOptimizedDockerManager();
 
-        // 分配端口
-        const port = await this.allocatePort();
+            // 创建用户容器
+            const container = await dockerManager.createUserContainer(projectId);
 
-        // 创建容器
-        const containerId = await dockerManager.createContainer({
-            projectId,
-            framework,
-            port,
-            files
-        });
+            // 启动开发服务器
+            await dockerManager.startDevServerInContainer(projectId);
 
-        // 启动容器
-        await dockerManager.startContainer(containerId);
-
-        return {
-            url: `/preview/${projectId}/`,
-            containerId,
-            port
-        };
+            return {
+                url: container.iframeUrl,
+                containerId: container.containerId,
+                port: 3000 // 默认端口
+            };
+        } catch (error) {
+            console.error('容器预览创建失败:', error);
+            throw new Error(`容器预览创建失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        }
     }
 
     /**

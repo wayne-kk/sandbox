@@ -17,7 +17,7 @@ function getDifyClient(): DifyClient {
 
 export async function POST(request: Request) {
     try {
-        const { prompt, projectType = 'nextjs', projectId = 'default-project', useVectorContext = true } = await request.json();
+        const { prompt, projectType = 'nextjs', projectId = 'default-project', useVectorContext = true, component_type = 'page' } = await request.json();    
 
         if (!prompt) {
             return NextResponse.json({
@@ -29,61 +29,24 @@ export async function POST(request: Request) {
         console.log(`🤖 开始使用 Dify 生成 UI 代码: ${prompt}`);
         console.log(`🧠 向量上下文: ${useVectorContext ? '启用' : '禁用'}`);
 
-        // 1. 构建增强的上下文
+        // 1. 构建简化的上下文
         let enhancedContext = `项目ID: ${projectId}, 目标框架: ${projectType}`;
 
-        if (useVectorContext) {
-            try {
-                console.log('🔍 开始构建向量增强上下文...');
-                const { ContextRetriever } = await import('@/lib/vector/context-retriever');
-                const contextRetriever = new ContextRetriever();
-
-                // 构建优化的上下文（限制在 3000 tokens 内）
-                const optimizedContext = await contextRetriever.buildOptimizedContext(
-                    projectId,
-                    prompt,
-                    3000
-                );
-
-                // 将向量检索结果添加到上下文中
-                enhancedContext = `项目ID: ${projectId}, 目标框架: ${projectType}
-
-智能检索的项目上下文:
-${optimizedContext.summary}
-
-相关代码片段:
-${optimizedContext.relevantCode.map(code =>
-                    `文件: ${code.file_path} (${code.content_type})
-     ${code.description}
-     ${code.code_snippet.substring(0, 200)}...`
-                ).join('\n\n')}
-
-可用组件:
-${optimizedContext.componentGuide}
-
-项目建议:
-${optimizedContext.suggestions.join('\n')}`;
-
-                console.log(`✅ 向量上下文构建完成: ${optimizedContext.tokenCount} tokens`);
-                console.log(`📊 检索到 ${optimizedContext.relevantCode.length} 个相关代码片段`);
-            } catch (vectorError) {
-                console.warn('向量上下文构建失败，使用基础上下文:', vectorError);
-                // 回退到基础上下文
-            }
-        }
+        // 移除向量上下文构建，使用简化上下文
+        console.log('📝 使用简化上下文，不包含项目详细信息');
 
         // 2. 初始化 Dify 客户端
         const difyClient = getDifyClient();
 
-        // 3. 使用 Dify 生成代码（包含增强上下文）
+        // 3. 使用 Dify 生成代码
         const generateResult = await difyClient.generateUI(prompt, {
             projectType,
-            context: enhancedContext
+            component_type
         });
 
         console.log(`✅ Dify 生成完成，共生成 ${generateResult.files.length} 个文件`);
 
-        // 3. 将生成的代码写入 sandbox
+        // 3. 将生成的代码写入 sandbox（保持原始文件结构）
         const fileOperations = generateResult.files.map(async (file) => {
             console.log(`📝 写入文件: ${file.path}`);
             return projectManager.saveProjectFiles(projectId, {
@@ -92,6 +55,90 @@ ${optimizedContext.suggestions.join('\n')}`;
         });
 
         await Promise.all(fileOperations);
+
+        // 4. 特殊处理：根据component_type决定文件结构
+        let mainComponent = generateResult.files.find(file =>
+            file.path.includes('page.tsx') ||
+            file.path.includes('App.tsx') ||
+            file.path.includes('index.tsx') ||
+            file.type === 'page'
+        );
+
+        // 如果没有找到页面文件，但component_type是单个组件，则使用第一个组件文件
+        if (!mainComponent && (component_type === 'component' || component_type === 'form' || component_type === 'card')) {
+            mainComponent = generateResult.files.find(file =>
+                file.path.endsWith('.tsx') &&
+                !file.path.includes('layout') &&
+                !file.path.includes('globals')
+            );
+            console.log('🔍 未找到页面文件，使用组件文件作为主组件:', mainComponent?.path);
+        }
+
+        // 4. 处理组件信息（在创建文件时确定组件名称）
+        let componentInfo = null;
+
+        if (mainComponent) {
+            console.log('🔍 原始组件代码:', mainComponent.content.substring(0, 200) + '...');
+            console.log('🔍 component_type:', component_type);
+
+            // 根据component_type决定文件结构
+            console.log('🔍 判断component_type:', component_type, '是否匹配单个组件类型');
+
+            if (component_type === 'component' || component_type === 'form' || component_type === 'card') {
+                // 单个组件：从文件路径获取组件名称
+                const componentName = mainComponent.path
+                    .replace(/^components\//, '')  // 移除 components/ 前缀
+                    .replace(/\.tsx?$/, '');       // 移除文件扩展名
+
+                console.log('🔍 组件名称:', componentName);
+
+                // 构建import路径
+                const importPath = mainComponent.path.replace(/\.tsx?$/, '');
+                const componentPath = `app/${componentName}/page.tsx`;
+
+                // 创建页面文件，import生成的组件
+                const pageContent = `'use client';
+
+import React from 'react';
+import ${componentName} from '@/${importPath}';
+
+export default function Page() {
+  return <${componentName} />;
+}`;
+
+                console.log('🔍 准备写入文件路径:', componentPath);
+                console.log('🔍 import路径:', importPath);
+
+                try {
+                    await projectManager.saveProjectFiles(projectId, {
+                        [componentPath]: pageContent
+                    });
+                    console.log(`✅ 组件页面已写入 sandbox/${componentPath}`);
+
+                    // 直接使用组件名称创建组件信息
+                    componentInfo = {
+                        name: componentName,
+                        path: componentPath,
+                        previewUrl: `/${componentName}`
+                    };
+                    console.log('🔍 保存的组件信息:', componentInfo);
+                } catch (error) {
+                    console.error('❌ 写入组件页面失败:', error);
+                }
+            } else {
+                // 项目生成：保持原有逻辑，只写入根页面
+                console.log(`🎯 项目生成，写入 sandbox/app/page.tsx: ${mainComponent.path}`);
+
+                try {
+                    await projectManager.saveProjectFiles(projectId, {
+                        'app/page.tsx': mainComponent.content
+                    });
+                    console.log(`✅ 项目主页面已写入 sandbox/app/page.tsx`);
+                } catch (error) {
+                    console.error('❌ 写入项目主页面失败:', error);
+                }
+            }
+        }
 
         // 4. 检查是否需要重启项目（如果有配置文件变化）
         const hasConfigChanges = generateResult.files.some(file =>
@@ -106,12 +153,8 @@ ${optimizedContext.suggestions.join('\n')}`;
 
         console.log('🔄 代码已写入 sandbox，项目将自动热重载');
 
-        // 5. 异步更新向量数据库（如果启用了向量上下文）
-        if (useVectorContext) {
-            updateProjectVectorsAsync(projectId, generateResult.files).catch(error => {
-                console.warn('异步向量更新失败:', error);
-            });
-        }
+        // 5. 跳过向量数据库更新（已禁用向量上下文）
+        console.log('⏭️ 跳过向量数据库更新');
 
         // 6. 智能演进分析（可选）
         let evolutionSuggestions = null;
@@ -137,6 +180,8 @@ ${optimizedContext.suggestions.join('\n')}`;
             console.warn('演进分析失败，跳过:', error);
         }
 
+        // 组件信息已在上面处理完成
+
         return NextResponse.json({
             success: true,
             message: '🎉 AI 代码生成并写入完成！',
@@ -152,6 +197,8 @@ ${optimizedContext.suggestions.join('\n')}`;
                 dependencies: generateResult.dependencies,
                 hasConfigChanges,
                 conversationId: difyClient.getCurrentConversationId(),
+                // 组件信息（仅单个组件生成时包含）
+                componentInfo,
                 // 新增：智能演进建议
                 evolution: evolutionSuggestions ? {
                     suggestions: evolutionSuggestions.suggestions,
@@ -159,14 +206,10 @@ ${optimizedContext.suggestions.join('\n')}`;
                     stats: evolutionSuggestions.stats
                 } : null,
                 // 新增：向量上下文信息
-                vectorContext: useVectorContext ? {
-                    enabled: true,
-                    contextSize: enhancedContext.length,
-                    contextType: 'enhanced'
-                } : {
+                vectorContext: {
                     enabled: false,
                     contextSize: enhancedContext.length,
-                    contextType: 'basic'
+                    contextType: 'simplified'
                 }
             }
         });

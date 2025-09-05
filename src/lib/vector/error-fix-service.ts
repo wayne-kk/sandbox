@@ -159,10 +159,11 @@ export class ErrorFixService {
         const startTime = Date.now();
         const logs: string[] = [];
         const appliedChanges: CodeChange[] = [];
+        let backupFiles: string[] = [];
 
         try {
             // 1. 备份原始文件
-            const backupFiles = await this.backupFiles(suggestion.codeChanges, projectPath);
+            backupFiles = await this.backupFiles(suggestion.codeChanges, projectPath);
             logs.push(`📦 已备份 ${backupFiles.length} 个文件`);
 
             // 2. 应用代码更改
@@ -212,7 +213,7 @@ export class ErrorFixService {
                 logs
             };
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ 自动修复失败:', error);
 
             // 发生异常时回滚更改
@@ -225,10 +226,10 @@ export class ErrorFixService {
 
             return {
                 success: false,
-                errorId: error.id,
+                errorId: error.id || 'unknown',
                 appliedChanges: [],
                 rollbackChanges: suggestion.codeChanges,
-                newErrors: [error.message],
+                newErrors: [error.message || '未知错误'],
                 executionTime: Date.now() - startTime,
                 logs
             };
@@ -309,7 +310,7 @@ export class ErrorFixService {
                         console.log(`❌ 错误 ${error.id} 修复失败，尝试次数: ${error.fixAttempts}`);
                     }
 
-                } catch (error) {
+                } catch (error: any) {
                     console.error(`❌ 处理错误 ${error.id} 时发生异常:`, error);
                     failedErrors++;
                 }
@@ -358,7 +359,7 @@ export class ErrorFixService {
         } catch (buildError: any) {
             // 构建失败，解析错误信息
             if (buildError.stderr) {
-                const errorLines = buildError.stderr.split('\n').filter(line => line.includes('Error:'));
+                const errorLines = buildError.stderr.split('\n').filter((line: string) => line.includes('Error:'));
 
                 for (const errorLine of errorLines) {
                     const error = this.parseBuildError(errorLine);
@@ -393,7 +394,7 @@ export class ErrorFixService {
             }
         } catch (typeError: any) {
             if (typeError.stderr) {
-                const errorLines = typeError.stderr.split('\n').filter(line => line.includes('error TS'));
+                const errorLines = typeError.stderr.split('\n').filter((line: string) => line.includes('error TS'));
 
                 for (const errorLine of errorLines) {
                     const error = this.parseTypeError(errorLine);
@@ -428,7 +429,7 @@ export class ErrorFixService {
             }
         } catch (lintError: any) {
             if (lintError.stderr) {
-                const errorLines = lintError.stderr.split('\n').filter(line => line.includes('error'));
+                const errorLines = lintError.stderr.split('\n').filter((line: string) => line.includes('error'));
 
                 for (const errorLine of errorLines) {
                     const error = this.parseLintError(errorLine);
@@ -557,7 +558,7 @@ ${contextInfo}
     private async generateFixSuggestions(prompt: string, error: ErrorInfo): Promise<FixSuggestion[]> {
         try {
             const response = await this.openai.chat.completions.create({
-                model: "gpt-4",
+                model: "gpt-4.1",
                 messages: [{
                     role: "user",
                     content: prompt
@@ -675,7 +676,7 @@ ${contextInfo}
             await fs.writeFile(filePath, newContent, 'utf-8');
             return { success: true };
 
-        } catch (error) {
+        } catch (error: any) {
             return { success: false, error: error.message };
         }
     }
@@ -710,7 +711,7 @@ ${contextInfo}
 
         } catch (validationError: any) {
             if (validationError.stderr) {
-                const errorLines = validationError.stderr.split('\n').filter(line => line.includes('Error:'));
+                const errorLines = validationError.stderr.split('\n').filter((line: string) => line.includes('Error:'));
                 errors.push(...errorLines);
             }
             return { success: false, errors };

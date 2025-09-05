@@ -94,10 +94,7 @@ export class RequirementGenerator {
         // 解析嵌套的 JSON 格式
         let requirementData;
         try {
-            const directParsed = JSON.parse(textContent);
-            requirementData = typeof directParsed.result === 'string'
-                ? JSON.parse(directParsed.result)
-                : directParsed.result;
+            requirementData = JSON.parse(textContent);
         } catch (error) {
             console.error('解析需求清单响应失败:', error);
             throw new Error('需求清单响应格式错误');

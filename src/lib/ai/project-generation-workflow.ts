@@ -87,7 +87,7 @@ export class ProjectGenerationWorkflow {
                 projectType: options.projectType || 'nextjs',
                 context: options.context || '项目生成'
             });
-
+            console.log('requirement', requirement)
             // 验证需求清单生成结果
             if (!requirement || !requirement.title) {
                 throw new Error('需求清单生成失败：返回结果为空或格式不正确');

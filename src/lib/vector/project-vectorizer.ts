@@ -345,6 +345,8 @@ export class ProjectVectorizer {
 
         try {
             if (extension === 'tsx' || extension === 'jsx') {
+                // 先解析工具函数和辅助函数（在组件之前）
+                blocks.push(...this.parseUtilityFunctions(content));
                 blocks.push(...this.parseReactComponents(content));
                 blocks.push(...this.parseReactHooks(content));
             }
@@ -387,6 +389,86 @@ export class ProjectVectorizer {
         }
 
         return blocks;
+    }
+
+    /**
+     * 解析工具函数和辅助函数
+     */
+    private parseUtilityFunctions(content: string): CodeBlock[] {
+        const blocks: CodeBlock[] = [];
+        const lines = content.split('\n');
+
+        // 常见的工具函数模式
+        const utilityPatterns = [
+            // classNames 类型的工具函数
+            /function\s+(classNames|cn|clsx|combineClasses)\s*\(/,
+            // 格式化函数
+            /function\s+(format|formatDate|formatCurrency|formatNumber)\s*\(/,
+            // 验证函数
+            /function\s+(validate|isValid|check)\w*\s*\(/,
+            // 工具函数
+            /function\s+(debounce|throttle|delay|sleep)\s*\(/,
+            // 数据处理函数
+            /function\s+(sort|filter|map|reduce)\w*\s*\(/,
+            // 字符串处理函数
+            /function\s+(capitalize|lowercase|uppercase|trim|slugify)\s*\(/,
+            // 数组处理函数
+            /function\s+(unique|flatten|chunk|groupBy)\s*\(/,
+            // 对象处理函数
+            /function\s+(merge|pick|omit|deepClone)\s*\(/,
+            // 常量定义
+            /const\s+(\w+)\s*=\s*\([^)]*\)\s*=>\s*{/,
+            // 简单的工具函数
+            /const\s+(classNames|cn|format|validate|debounce|throttle)\s*=\s*\(/
+        ];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            for (const pattern of utilityPatterns) {
+                const match = line.match(pattern);
+                if (match) {
+                    const functionName = match[1];
+
+                    // 检查是否在组件定义之前（工具函数通常在组件之前）
+                    const isBeforeComponent = this.isBeforeMainComponent(lines, i);
+
+                    if (isBeforeComponent) {
+                        const { endLine, code } = this.extractBlock(lines, i, '{', '}');
+
+                        if (code.length > 10) { // 过滤太短的代码块
+                            blocks.push({
+                                type: 'function',
+                                code,
+                                lineStart: i + 1,
+                                lineEnd: endLine + 1,
+                                exports: [],
+                                name: functionName
+                            });
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        return blocks;
+    }
+
+    /**
+     * 检查位置是否在主组件定义之前
+     */
+    private isBeforeMainComponent(lines: string[], currentIndex: number): boolean {
+        // 查找主组件定义（通常是 export default 的组件）
+        for (let i = currentIndex + 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.includes('export default') ||
+                line.match(/export\s+default\s+function\s+\w+/) ||
+                line.match(/export\s+const\s+\w+\s*=.*=>/)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

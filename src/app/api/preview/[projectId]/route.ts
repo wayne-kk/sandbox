@@ -41,23 +41,54 @@ export async function POST(
             return NextResponse.json({ error: '未授权' }, { status: 401 });
         }
 
-        // 获取项目信息和文件
-        const project = await fileStorage.getProject(userId, projectId);
-        if (!project) {
-            return NextResponse.json({ error: '项目不存在' }, { status: 404 });
+        // 直接从sandbox目录读取文件
+        const fs = await import('fs/promises');
+        const path = await import('path');
+
+        const sandboxPath = path.join(process.cwd(), 'sandbox');
+        const files: { [path: string]: string } = {};
+
+        try {
+            // 读取sandbox目录中的所有文件
+            const readDir = async (dir: string, basePath: string = '') => {
+                const items = await fs.readdir(dir, { withFileTypes: true });
+
+                for (const item of items) {
+                    const fullPath = path.join(dir, item.name);
+                    const relativePath = path.join(basePath, item.name);
+
+                    if (item.isDirectory()) {
+                        // 跳过node_modules等目录
+                        if (!['node_modules', '.next', '.git'].includes(item.name)) {
+                            await readDir(fullPath, relativePath);
+                        }
+                    } else if (item.isFile()) {
+                        // 只读取相关文件
+                        if (['.tsx', '.ts', '.jsx', '.js', '.css', '.html', '.json'].some(ext => item.name.endsWith(ext))) {
+                            try {
+                                const content = await fs.readFile(fullPath, 'utf-8');
+                                files[relativePath] = content;
+                            } catch (error) {
+                                console.warn(`无法读取文件 ${fullPath}:`, error);
+                            }
+                        }
+                    }
+                }
+            };
+
+            await readDir(sandboxPath);
+            console.log(`📁 从sandbox目录读取了 ${Object.keys(files).length} 个文件`);
+
+        } catch (error) {
+            console.error('读取sandbox文件失败:', error);
+            return NextResponse.json({ error: '无法读取项目文件' }, { status: 500 });
         }
 
-        // 构建文件映射
-        const files: { [path: string]: string } = {};
-        project.files.forEach(file => {
-            files[file.filePath] = file.content;
-        });
-
-        // 启动预览
+        // 启动预览（默认使用React框架）
         const result = await previewManager.startPreview(
             projectId,
             files,
-            project.framework as 'react' | 'vue' | 'vanilla'
+            'react' as 'react' | 'vue' | 'vanilla'
         );
 
         return NextResponse.json({
@@ -65,7 +96,8 @@ export async function POST(
             data: {
                 url: result.url,
                 containerId: result.containerId,
-                status: 'running'
+                status: 'running',
+                files: files // 返回文件内容供预览页面使用
             }
         });
 
@@ -91,14 +123,47 @@ export async function PUT(
             return NextResponse.json({ error: '未授权' }, { status: 401 });
         }
 
-        const body = await request.json();
-        const { files } = body;
+        // 直接从sandbox目录读取最新文件
+        const fs = await import('fs/promises');
+        const path = await import('path');
 
-        if (!files || typeof files !== 'object') {
-            return NextResponse.json(
-                { error: '无效的文件数据' },
-                { status: 400 }
-            );
+        const sandboxPath = path.join(process.cwd(), 'sandbox');
+        const files: { [path: string]: string } = {};
+
+        try {
+            // 读取sandbox目录中的所有文件
+            const readDir = async (dir: string, basePath: string = '') => {
+                const items = await fs.readdir(dir, { withFileTypes: true });
+
+                for (const item of items) {
+                    const fullPath = path.join(dir, item.name);
+                    const relativePath = path.join(basePath, item.name);
+
+                    if (item.isDirectory()) {
+                        // 跳过node_modules等目录
+                        if (!['node_modules', '.next', '.git'].includes(item.name)) {
+                            await readDir(fullPath, relativePath);
+                        }
+                    } else if (item.isFile()) {
+                        // 只读取相关文件
+                        if (['.tsx', '.ts', '.jsx', '.js', '.css', '.html', '.json'].some(ext => item.name.endsWith(ext))) {
+                            try {
+                                const content = await fs.readFile(fullPath, 'utf-8');
+                                files[relativePath] = content;
+                            } catch (error) {
+                                console.warn(`无法读取文件 ${fullPath}:`, error);
+                            }
+                        }
+                    }
+                }
+            };
+
+            await readDir(sandboxPath);
+            console.log(`📁 更新预览，从sandbox目录读取了 ${Object.keys(files).length} 个文件`);
+
+        } catch (error) {
+            console.error('读取sandbox文件失败:', error);
+            return NextResponse.json({ error: '无法读取项目文件' }, { status: 500 });
         }
 
         // 更新预览

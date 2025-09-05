@@ -118,7 +118,7 @@ export default function AIGeneratorPage() {
 
       {/* 顶部导航 */}
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-8xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-3">
@@ -177,7 +177,7 @@ export default function AIGeneratorPage() {
       </header>
 
       {/* 主要内容区域 */}
-      <main className="max-w-7xl mx-auto py-8 px-6">
+      <main className="max-w-8xl mx-auto py-8 px-6">
         {/* 统计信息卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">

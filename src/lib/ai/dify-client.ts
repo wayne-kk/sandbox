@@ -78,7 +78,11 @@ export class DifyClient {
         console.log(`📋 options:`, options);
 
         const requestBody = {
-            inputs: { query: prompt, project_type: options.projectType, context: options.context, component_type: options.component_type, designRules: options.designRules },// 使用用户输入的描述
+            inputs: {
+                query: prompt,
+                project_type: options.projectType,
+                component_type: options.component_type
+            },
             response_mode: "blocking",
             conversation_id: "", // 可以根据需要填写
             user: "abc-123", // 替换为实际的用户标识
@@ -128,8 +132,7 @@ export class DifyClient {
         }
 
         // 解析嵌套的 {"result": "..."} 格式
-        const directParsed = JSON.parse(textContent);
-        const nestedResult = JSON.parse(directParsed.result);
+        const nestedResult = JSON.parse(textContent);
 
         return this.validateGenerateResult(nestedResult);
     }
@@ -203,8 +206,6 @@ export class DifyClient {
 interface GenerateOptions {
     projectType?: 'nextjs' | 'react' | 'vue';
     component_type?: string;
-    designRules?: string;
-    context?: string;
     user?: string;
     headers?: Record<string, string>;
     customParams?: Record<string, any>;
