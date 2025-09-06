@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import IntegratedIDE from '@/components/IDE/IntegratedIDE';
 import GitHubProjectSetup from '@/components/IDE/GitHubProjectSetup';
+import ComponentUploader from '@/components/Upload/ComponentUploader';
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [showGitHubSetup, setShowGitHubSetup] = useState(false);
+  const [showComponentUploader, setShowComponentUploader] = useState(false);
   const [projectRefreshKey, setProjectRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -52,6 +54,13 @@ export default function Home() {
     }
   };
 
+  // 组件上传完成处理
+  const handleComponentUploadComplete = (components: any[]) => {
+    console.log('✅ 组件上传成功:', components);
+    // 刷新IDE组件以显示新上传的组件
+    setProjectRefreshKey(prev => prev + 1);
+  };
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-900">
@@ -82,6 +91,22 @@ export default function Home() {
             <div className="text-xs text-gray-500">
               支持 React / Vue / Vanilla JS
             </div>
+
+            <button
+              onClick={() => setShowComponentUploader(true)}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors flex items-center space-x-1"
+            >
+              <span>📦</span>
+              <span>上传组件</span>
+            </button>
+
+            <a
+              href="/ai-pipeline"
+              className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm transition-colors flex items-center space-x-1"
+            >
+              <span>🤖</span>
+              <span>前端组件 pipeline</span>
+            </a>
             
             <a
               href="/ai-generator"
@@ -144,6 +169,13 @@ export default function Home() {
         isVisible={showGitHubSetup}
         onClose={() => setShowGitHubSetup(false)}
         onProjectSetup={handleGitHubProjectSetup}
+      />
+
+      {/* 组件上传弹窗 */}
+      <ComponentUploader
+        isVisible={showComponentUploader}
+        onClose={() => setShowComponentUploader(false)}
+        onUploadComplete={handleComponentUploadComplete}
       />
     </div>
   );
