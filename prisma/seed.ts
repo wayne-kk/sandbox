@@ -3,25 +3,25 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🌱 开始填充数据库...');
+  console.log('🌱 开始填充数据库...');
 
-    // 创建React模板
-    const reactTemplate = await prisma.template.upsert({
-        where: { name: 'react-typescript-starter' },
-        update: {},
-        create: {
-            name: 'react-typescript-starter',
-            displayName: 'React + TypeScript 启动器',
-          description: '使用React 18 + TypeScript + Vite的现代化前端项目模板',
-          framework: 'react',
-        },
-    });
+  // 创建React模板
+  const reactTemplate = await prisma.template.upsert({
+    where: { name: 'react-typescript-starter' },
+    update: {},
+    create: {
+      name: 'react-typescript-starter',
+      displayName: 'React + TypeScript 启动器',
+      description: '使用React 18 + TypeScript + Vite的现代化前端项目模板',
+      framework: 'react',
+    },
+  });
 
-    // 创建模板文件
-    const templateFiles = [
-        {
-            filePath: 'src/App.tsx',
-            content: `import React from 'react';
+  // 创建模板文件
+  const templateFiles = [
+    {
+      filePath: 'src/App.tsx',
+      content: `import React from 'react';
 import './App.css';
 
 function App() {
@@ -41,12 +41,10 @@ function App() {
 }
 
 export default App;`,
-            fileType: 'typescript',
-            isEntryPoint: true,
-        },
-        {
-            filePath: 'src/main.tsx',
-            content: `import React from 'react';
+    },
+    {
+      filePath: 'src/main.tsx',
+      content: `import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
@@ -56,11 +54,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>
 );`,
-            fileType: 'typescript',
-        },
-        {
-            filePath: 'src/App.css',
-            content: `.App {
+    },
+    {
+      filePath: 'src/App.css',
+      content: `.App {
   text-align: center;
 }
 
@@ -90,11 +87,10 @@ button {
 button:hover {
   background-color: #21a0c4;
 }`,
-            fileType: 'css',
-        },
-        {
-            filePath: 'src/index.css',
-            content: `body {
+    },
+    {
+      filePath: 'src/index.css',
+      content: `body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -111,11 +107,10 @@ button:hover {
   width: 100%;
   height: 100vh;
 }`,
-            fileType: 'css',
-        },
-        {
-            filePath: 'index.html',
-            content: `<!DOCTYPE html>
+    },
+    {
+      filePath: 'index.html',
+      content: `<!DOCTYPE html>
 <html lang="zh">
   <head>
     <meta charset="UTF-8" />
@@ -127,11 +122,10 @@ button:hover {
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>`,
-            fileType: 'html',
-        },
-        {
-            filePath: 'package.json',
-            content: `{
+    },
+    {
+      filePath: 'package.json',
+      content: `{
   "name": "react-typescript-app",
   "private": true,
   "version": "0.0.0",
@@ -153,11 +147,10 @@ button:hover {
     "vite": "^5.0.0"
   }
 }`,
-            fileType: 'json',
-        },
-        {
-            filePath: 'vite.config.ts',
-            content: `import { defineConfig } from 'vite';
+    },
+    {
+      filePath: 'vite.config.ts',
+      content: `import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
@@ -167,44 +160,43 @@ export default defineConfig({
     port: 3000,
   },
 });`,
-            fileType: 'typescript',
-        }
-    ];
-
-    for (const file of templateFiles) {
-        await prisma.templateFile.upsert({
-            where: {
-                templateId_filePath: {
-                    templateId: reactTemplate.id,
-                    filePath: file.filePath,
-                }
-            },
-            update: {},
-            create: {
-                templateId: reactTemplate.id,
-                ...file,
-            },
-        });
     }
+  ];
 
-    console.log(`📄 创建模板文件: ${templateFiles.length} 个`);
-
-    // 创建Vue模板
-    const vueTemplate = await prisma.template.upsert({
-        where: { name: 'vue-typescript-starter' },
-        update: {},
-        create: {
-            name: 'vue-typescript-starter',
-            displayName: 'Vue + TypeScript 启动器',
-          description: '使用Vue 3 + TypeScript + Vite的现代化前端项目模板',
-          framework: 'vue',
-        },
+  for (const file of templateFiles) {
+    await prisma.templateFile.upsert({
+      where: {
+        templateId_filePath: {
+          templateId: reactTemplate.id,
+          filePath: file.filePath,
+        }
+      },
+      update: {},
+      create: {
+        templateId: reactTemplate.id,
+        ...file,
+      },
     });
+  }
 
-    const vueFiles = [
-        {
-            filePath: 'src/App.vue',
-            content: `<template>
+  console.log(`📄 创建模板文件: ${templateFiles.length} 个`);
+
+  // 创建Vue模板
+  const vueTemplate = await prisma.template.upsert({
+    where: { name: 'vue-typescript-starter' },
+    update: {},
+    create: {
+      name: 'vue-typescript-starter',
+      displayName: 'Vue + TypeScript 启动器',
+      description: '使用Vue 3 + TypeScript + Vite的现代化前端项目模板',
+      framework: 'vue',
+    },
+  });
+
+  const vueFiles = [
+    {
+      filePath: 'src/App.vue',
+      content: `<template>
   <div id="app">
     <header>
       <h1>Vue + TypeScript 🚀</h1>
@@ -258,20 +250,17 @@ button:hover {
   background-color: #2c3e50;
 }
 </style>`,
-            fileType: 'vue',
-            isEntryPoint: true,
-        },
-        {
-            filePath: 'src/main.ts',
-            content: `import { createApp } from 'vue';
+    },
+    {
+      filePath: 'src/main.ts',
+      content: `import { createApp } from 'vue';
 import App from './App.vue';
 
 createApp(App).mount('#app');`,
-            fileType: 'typescript',
-        },
-        {
-            filePath: 'index.html',
-            content: `<!DOCTYPE html>
+    },
+    {
+      filePath: 'index.html',
+      content: `<!DOCTYPE html>
 <html lang="zh">
   <head>
     <meta charset="UTF-8" />
@@ -283,37 +272,36 @@ createApp(App).mount('#app');`,
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>`,
-            fileType: 'html',
-        }
-    ];
-
-    for (const file of vueFiles) {
-        await prisma.templateFile.upsert({
-            where: {
-                templateId_filePath: {
-                    templateId: vueTemplate.id,
-                    filePath: file.filePath,
-                }
-            },
-            update: {},
-            create: {
-                templateId: vueTemplate.id,
-                ...file,
-            },
-        });
     }
+  ];
 
-    console.log(`🔧 创建Vue模板文件: ${vueFiles.length} 个`);
+  for (const file of vueFiles) {
+    await prisma.templateFile.upsert({
+      where: {
+        templateId_filePath: {
+          templateId: vueTemplate.id,
+          filePath: file.filePath,
+        }
+      },
+      update: {},
+      create: {
+        templateId: vueTemplate.id,
+        ...file,
+      },
+    });
+  }
 
-    console.log('✅ 数据库填充完成！');
+  console.log(`🔧 创建Vue模板文件: ${vueFiles.length} 个`);
+
+  console.log('✅ 数据库填充完成！');
 }
 
 main()
-    .then(async () => {
-        await prisma.$disconnect();
-    })
-    .catch(async (e) => {
-        console.error('❌ 填充失败:', e);
-        await prisma.$disconnect();
-        process.exit(1);
-    }); 
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error('❌ 填充失败:', e);
+    await prisma.$disconnect();
+    process.exit(1);
+  }); 
