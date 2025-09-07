@@ -2,12 +2,17 @@
 
 ## 🚀 快速部署
 
-### 1. 一键部署
+### 1. 配置 Docker 镜像加速器（推荐）
+```bash
+./setup-docker-mirrors.sh
+```
+
+### 2. 一键部署
 ```bash
 ./deploy.sh
 ```
 
-### 2. 访问地址
+### 3. 访问地址
 - **应用**: http://localhost:3000
 - **Nginx**: http://localhost
 - **健康检查**: http://localhost:3000/api/health
