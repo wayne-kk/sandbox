@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "☁️ 云服务器部署 V0 Sandbox..."
+echo "🚀 V0 Sandbox 一键部署脚本..."
 
 # 设置错误时退出
 set -e
@@ -14,9 +14,9 @@ NC='\033[0m'
 # 检查 Docker 是否运行
 if ! docker info > /dev/null 2>&1; then
     echo -e "${RED}❌ Docker 未运行，请先启动 Docker${NC}"
-    exit 1
-fi
-
+        exit 1
+    fi
+    
 # 1. 配置 Docker 镜像加速器
 echo -e "${YELLOW}🔧 配置 Docker 镜像加速器...${NC}"
 sudo mkdir -p /etc/docker
@@ -25,6 +25,31 @@ sudo mkdir -p /etc/docker
 if [ -f /etc/docker/daemon.json ]; then
     sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.backup
     echo -e "${GREEN}✅ 已备份现有 Docker 配置${NC}"
+fi
+
+# 检查是否有代理设置
+PROXY_CONFIG=""
+if [ ! -z "$https_proxy" ] || [ ! -z "$http_proxy" ]; then
+    echo -e "${YELLOW}🔍 检测到代理设置，配置 Docker 代理...${NC}"
+    echo -e "${GREEN}   代理地址: $https_proxy${NC}"
+    
+    # 配置 Docker 系统服务代理
+    sudo mkdir -p /etc/systemd/system/docker.service.d
+    sudo tee /etc/systemd/system/docker.service.d/http-proxy.conf > /dev/null <<EOF
+[Service]
+Environment="HTTP_PROXY=$http_proxy"
+Environment="HTTPS_PROXY=$https_proxy"
+Environment="NO_PROXY=localhost,127.0.0.1"
+EOF
+    
+    PROXY_CONFIG=',
+  "proxies": {
+    "default": {
+      "httpProxy": "'${http_proxy:-$https_proxy}'",
+      "httpsProxy": "'${https_proxy:-$http_proxy}'",
+      "noProxy": "localhost,127.0.0.1"
+    }
+  }'
 fi
 
 # 写入镜像加速器配置
@@ -42,7 +67,7 @@ sudo tee /etc/docker/daemon.json > /dev/null <<EOF
   "log-opts": {
     "max-size": "10m",
     "max-file": "3"
-  }
+  }$PROXY_CONFIG
 }
 EOF
 
@@ -55,6 +80,15 @@ sudo systemctl restart docker
 
 # 等待 Docker 启动
 sleep 10
+
+# 测试 Docker 连接
+echo -e "${YELLOW}🧪 测试 Docker 连接...${NC}"
+if docker info > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Docker 服务正常${NC}"
+else
+    echo -e "${RED}❌ Docker 服务异常${NC}"
+    exit 1
+fi
 
 # 3. 预拉取镜像
 echo -e "${YELLOW}🔄 预拉取 Docker 镜像...${NC}"

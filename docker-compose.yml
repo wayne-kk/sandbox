@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.prod.cn
+      dockerfile: Dockerfile
     container_name: v0-sandbox-app
     ports:
       - "3000:3000"

@@ -1,21 +1,19 @@
-# V0 Sandbox 云服务器部署指南
+# V0 Sandbox 部署指南
 
 ## 🚀 一键部署
 
-### 方案1：完整部署（推荐）
+### 自动部署（推荐）
 ```bash
 ./deploy.sh
 ```
 
-### 方案2：简化部署（如果镜像拉取失败）
-```bash
-./deploy-simple.sh
-```
-
-### 方案3：网络诊断
-```bash
-./network-test.sh
-```
+**特性**：
+- ✅ 自动检测代理设置
+- ✅ 自动配置 Docker 镜像加速器
+- ✅ 智能镜像源切换
+- ✅ 预拉取镜像
+- ✅ 健康检查
+- ✅ 防火墙配置提示
 
 ### 访问地址
 - **应用**: http://localhost:3000
@@ -68,27 +66,28 @@ docker compose restart
 ### 镜像拉取失败
 如果遇到镜像拉取失败，请按以下顺序尝试：
 
-1. **运行网络诊断**：
+1. **检查代理设置**：
    ```bash
-   ./network-test.sh
+   echo $https_proxy
+   echo $http_proxy
    ```
 
-2. **使用简化部署**：
-   ```bash
-   ./deploy-simple.sh
-   ```
-
-3. **手动拉取镜像**：
+2. **手动拉取镜像**：
    ```bash
    docker pull redis:7-alpine
    docker pull nginx:alpine
    docker pull node:18-alpine
    ```
 
-4. **检查网络连接**：
+3. **检查网络连接**：
    ```bash
    ping 8.8.8.8
    curl -I https://registry-1.docker.io/v2/
+   ```
+
+4. **重新运行部署**：
+   ```bash
+   ./deploy.sh
    ```
 
 ### 防火墙配置
@@ -127,20 +126,11 @@ ports:
 ## 📁 项目结构
 ```
 v0-sandbox/
-├── deploy.sh              # 云服务器部署脚本
-├── docker-compose.yml     # Docker 编排配置（使用国内镜像源）
-├── Dockerfile.prod.cn     # 生产环境 Dockerfile（国内镜像源优化）
+├── deploy.sh              # 一键部署脚本
+├── docker-compose.yml     # Docker 编排配置
+├── Dockerfile             # 生产环境 Dockerfile
 ├── nginx.conf             # Nginx 配置
 ├── data/                  # 数据目录
 ├── logs/                  # 日志目录
 └── sandbox/               # 模板项目
 ```
-
-## ✨ 特性
-
-- ✅ **自动配置 Docker 镜像加速器**
-- ✅ **智能镜像源切换**（官方源 → 国内镜像源）
-- ✅ **预拉取镜像**（避免部署时超时）
-- ✅ **健康检查**（确保服务正常运行）
-- ✅ **防火墙配置提示**（外网访问支持）
-- ✅ **完整的错误处理**（详细的日志输出）
