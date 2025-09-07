@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "☁️ 云服务器部署 V0 Sandbox..."
+echo "🚀 简化部署 V0 Sandbox（跳过镜像预拉取）..."
 
 # 设置错误时退出
 set -e
@@ -56,88 +56,24 @@ sudo systemctl restart docker
 # 等待 Docker 启动
 sleep 10
 
-# 3. 预拉取镜像
-echo -e "${YELLOW}🔄 预拉取 Docker 镜像...${NC}"
-
-# 镜像列表
-IMAGES=(
-    "redis:7-alpine"
-    "nginx:alpine"
-    "node:18-alpine"
-)
-
-# 国内镜像源列表（更多选择）
-MIRRORS=(
-    "registry.cn-hangzhou.aliyuncs.com/library"
-    "registry.cn-hangzhou.aliyuncs.com/public"
-    "docker.mirrors.ustc.edu.cn"
-    "hub-mirror.c.163.com"
-    "mirror.baidubce.com"
-    "ccr.ccs.tencentyun.com"
-    "dockerhub.azk8s.cn"
-    "reg-mirror.qiniu.com"
-    "dockerhub.timeweb.cloud"
-    "docker.mirrors.sjtug.sjtu.edu.cn"
-)
-
-echo -e "${YELLOW}📋 需要拉取的镜像:${NC}"
-for image in "${IMAGES[@]}"; do
-    echo -e "${YELLOW}  - $image${NC}"
-done
-
-# 尝试从不同镜像源拉取
-MIRROR_SUCCESS=false
-for image in "${IMAGES[@]}"; do
-    echo -e "${YELLOW}🔄 拉取镜像: $image${NC}"
-    
-    # 首先尝试官方源
-    if timeout 30 docker pull "$image" 2>/dev/null; then
-        echo -e "${GREEN}✅ 成功拉取: $image (官方源)${NC}"
-        MIRROR_SUCCESS=true
-        continue
-    fi
-    
-    # 尝试国内镜像源
-    for mirror in "${MIRRORS[@]}"; do
-        mirror_image="$mirror/$image"
-        echo -e "${YELLOW}🔄 尝试镜像源: $mirror_image${NC}"
-        
-        if timeout 30 docker pull "$mirror_image" 2>/dev/null; then
-            echo -e "${GREEN}✅ 成功拉取: $mirror_image${NC}"
-            # 重新标记为官方名称
-            docker tag "$mirror_image" "$image"
-            echo -e "${GREEN}✅ 重新标记为: $image${NC}"
-            MIRROR_SUCCESS=true
-            break
-        else
-            echo -e "${RED}❌ 拉取失败: $mirror_image${NC}"
-        fi
-    done
-done
-
-if [ "$MIRROR_SUCCESS" = true ]; then
-    echo -e "${GREEN}🎉 镜像预拉取完成！${NC}"
-else
-    echo -e "${YELLOW}⚠️ 镜像预拉取失败，将使用官方镜像源${NC}"
-fi
-
-# 4. 清理旧容器
+# 3. 清理旧容器
 echo -e "${YELLOW}🧹 清理旧容器...${NC}"
 docker compose down --remove-orphans 2>/dev/null || true
 
-# 5. 创建必要目录
+# 4. 创建必要目录
 echo -e "${YELLOW}📁 创建必要目录...${NC}"
 mkdir -p data logs
 
-# 6. 构建并启动服务
+# 5. 构建并启动服务（直接使用官方镜像）
 echo -e "${YELLOW}🔨 构建并启动服务...${NC}"
+echo -e "${YELLOW}⚠️ 跳过镜像预拉取，直接使用官方镜像源${NC}"
 docker compose up -d
 
-# 7. 等待服务启动
+# 6. 等待服务启动
 echo -e "${YELLOW}⏳ 等待服务启动...${NC}"
 sleep 20
 
-# 8. 检查服务状态
+# 7. 检查服务状态
 echo -e "${YELLOW}🔍 检查服务状态...${NC}"
 if docker compose ps | grep -q "Up"; then
     echo -e "${GREEN}✅ 服务启动成功！${NC}"
@@ -150,7 +86,7 @@ else
     exit 1
 fi
 
-# 9. 健康检查
+# 8. 健康检查
 echo -e "${YELLOW}🏥 执行健康检查...${NC}"
 for i in {1..30}; do
     if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
@@ -166,7 +102,7 @@ for i in {1..30}; do
     sleep 3
 done
 
-echo -e "${GREEN}🎉 云服务器部署完成！${NC}"
+echo -e "${GREEN}🎉 简化部署完成！${NC}"
 echo -e "${GREEN}📊 服务状态:${NC}"
 docker compose ps
 
@@ -175,7 +111,7 @@ echo -e "${YELLOW}   - 直接访问应用: http://localhost:3000${NC}"
 echo -e "${YELLOW}   - 通过 Nginx: http://localhost${NC}"
 echo -e "${YELLOW}   - 外网访问: http://你的服务器IP${NC}"
 
-# 10. 显示防火墙配置提示
+# 9. 显示防火墙配置提示
 echo -e "${YELLOW}🔒 防火墙配置提示:${NC}"
 echo -e "${YELLOW}   如果无法外网访问，请开放以下端口:${NC}"
 echo -e "${YELLOW}   sudo ufw allow 80${NC}"
