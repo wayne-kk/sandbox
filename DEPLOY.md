@@ -1,20 +1,16 @@
-# V0 Sandbox 部署指南
+# V0 Sandbox 云服务器部署指南
 
-## 🚀 快速部署
+## 🚀 一键部署
 
-### 1. 配置 Docker 镜像加速器（推荐）
-```bash
-./setup-docker-mirrors.sh
-```
-
-### 2. 一键部署
+### 云服务器部署
 ```bash
 ./deploy.sh
 ```
 
-### 3. 访问地址
+### 访问地址
 - **应用**: http://localhost:3000
 - **Nginx**: http://localhost
+- **外网访问**: http://你的服务器IP
 - **健康检查**: http://localhost:3000/api/health
 
 ## 🔧 环境配置（可选）
@@ -59,23 +55,30 @@ docker compose restart
 
 ## 🛠️ 故障排除
 
-### Docker 镜像拉取超时
-如果遇到镜像拉取超时，配置 Docker 镜像加速器：
+### 防火墙配置
+如果无法外网访问，请开放端口：
 
 ```bash
-# 创建 Docker 配置
-sudo mkdir -p /etc/docker
-sudo tee /etc/docker/daemon.json > /dev/null <<EOF
-{
-  "registry-mirrors": [
-    "https://docker.mirrors.ustc.edu.cn",
-    "https://hub-mirror.c.163.com"
-  ]
-}
-EOF
+# Ubuntu/Debian
+sudo ufw allow 80
+sudo ufw allow 3000
 
-# 重启 Docker
-sudo systemctl restart docker
+# CentOS/RHEL
+sudo firewall-cmd --permanent --add-port=80/tcp
+sudo firewall-cmd --permanent --add-port=3000/tcp
+sudo firewall-cmd --reload
+```
+
+### 查看服务状态
+```bash
+# 查看容器状态
+docker compose ps
+
+# 查看应用日志
+docker compose logs -f app
+
+# 查看所有服务日志
+docker compose logs
 ```
 
 ### 端口冲突
@@ -88,11 +91,20 @@ ports:
 ## 📁 项目结构
 ```
 v0-sandbox/
-├── deploy.sh              # 部署脚本
-├── docker-compose.yml     # Docker 编排配置
-├── Dockerfile.prod.cn     # 生产环境 Dockerfile
+├── deploy.sh              # 云服务器部署脚本
+├── docker-compose.yml     # Docker 编排配置（使用国内镜像源）
+├── Dockerfile.prod.cn     # 生产环境 Dockerfile（国内镜像源优化）
 ├── nginx.conf             # Nginx 配置
 ├── data/                  # 数据目录
 ├── logs/                  # 日志目录
 └── sandbox/               # 模板项目
 ```
+
+## ✨ 特性
+
+- ✅ **自动配置 Docker 镜像加速器**
+- ✅ **智能镜像源切换**（官方源 → 国内镜像源）
+- ✅ **预拉取镜像**（避免部署时超时）
+- ✅ **健康检查**（确保服务正常运行）
+- ✅ **防火墙配置提示**（外网访问支持）
+- ✅ **完整的错误处理**（详细的日志输出）

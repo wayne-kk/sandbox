@@ -31,8 +31,9 @@ services:
     networks:
       - v0-sandbox-network
 
+  # 使用国内镜像源的 Redis
   redis:
-    image: redis:7-alpine
+    image: registry.cn-hangzhou.aliyuncs.com/public/redis:7-alpine
     container_name: v0-sandbox-redis
     ports:
       - "6379:6379"
@@ -48,8 +49,9 @@ services:
       timeout: 10s
       retries: 3
 
+  # 使用国内镜像源的 Nginx
   nginx:
-    image: nginx:alpine
+    image: registry.cn-hangzhou.aliyuncs.com/public/nginx:alpine
     container_name: v0-sandbox-nginx
     ports:
       - "80:80"
