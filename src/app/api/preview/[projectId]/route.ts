@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RealtimePreviewManager } from '@/lib/preview/realtime-preview';
-import { PrismaFileStorageService } from '@/lib/services/file-storage.service';
 
 const previewManager = RealtimePreviewManager.getInstance();
-const fileStorage = PrismaFileStorageService.getInstance();
 
 // GET /api/preview/[projectId] - 获取预览状态
 export async function GET(
@@ -35,11 +33,6 @@ export async function POST(
 ) {
     try {
         const { projectId } = await params;
-        const userId = request.headers.get('x-user-id');
-
-        if (!userId) {
-            return NextResponse.json({ error: '未授权' }, { status: 401 });
-        }
 
         // 直接从sandbox目录读取文件
         const fs = await import('fs/promises');
@@ -117,11 +110,6 @@ export async function PUT(
 ) {
     try {
         const { projectId } = await params;
-        const userId = request.headers.get('x-user-id');
-
-        if (!userId) {
-            return NextResponse.json({ error: '未授权' }, { status: 401 });
-        }
 
         // 直接从sandbox目录读取最新文件
         const fs = await import('fs/promises');

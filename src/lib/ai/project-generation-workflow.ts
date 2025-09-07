@@ -140,9 +140,11 @@ export class ProjectGenerationWorkflow {
                     // 调用 generateUI
                     const sectionResult = await this.componentDifyClient!.generateUI(sectionPrompt, {
                         projectType: options.projectType || 'nextjs',
-                        context: `${section.pageName} 页面的 ${section.sectionName} 组件`,
                         component_type: section.sectionName,
-                        designRules: requirement.designRules
+                        customParams: {
+                            context: `${section.pageName} 页面的 ${section.sectionName} 组件`,
+                            designRules: requirement.designRules
+                        }
                     });
 
                     console.log(`✅ ${section.pageName} - ${section.sectionName} 组件生成完成`);
@@ -431,9 +433,11 @@ export class ProjectGenerationWorkflow {
                 // 调用 Dify 生成页面代码
                 const pageResult = await this.componentDifyClient!.generateUI(pagePrompt, {
                     projectType: options.projectType || 'nextjs',
-                    context: `${pageName}页面文件生成`,
                     component_type: 'page',
-                    designRules: requirement.designRules
+                    customParams: {
+                        context: `${pageName}页面文件生成`,
+                        designRules: requirement.designRules
+                    }
                 });
 
                 // 写入页面文件
@@ -577,9 +581,11 @@ export default function ${pageName.replace(/\s+/g, '')}Page() {
             // 调用 Dify 生成项目结构文件
             const structureResult = await this.componentDifyClient!.generateUI(integrationPrompt, {
                 projectType: options.projectType || 'nextjs',
-                context: '项目结构整合和导航生成',
                 component_type: 'structure',
-                designRules: requirement.designRules
+                customParams: {
+                    context: '项目结构整合和导航生成',
+                    designRules: requirement.designRules
+                }
             });
 
             const generatedFiles: string[] = [];

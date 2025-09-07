@@ -3,17 +3,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 interface IframePreviewProps {
-    userId: string;
+    projectId: string;
     className?: string;
     onLoad?: () => void;
     onError?: (error: string) => void;
 }
 
-export default function IframePreview({ 
-    userId, 
-    className = '', 
-    onLoad, 
-    onError 
+export default function IframePreview({
+    projectId,
+    className = '',
+    onLoad,
+    onError
 }: IframePreviewProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -35,12 +35,12 @@ export default function IframePreview({
                     },
                     body: JSON.stringify({
                         action: 'create',
-                        userId
+                        projectId
                     })
                 });
 
                 const data = await response.json();
-                
+
                 if (data.success) {
                     setPreviewUrl(data.iframeUrl);
                 } else {
@@ -55,16 +55,16 @@ export default function IframePreview({
             }
         };
 
-        if (userId) {
+        if (projectId) {
             fetchPreviewUrl();
         }
-    }, [userId, onError]);
+    }, [projectId, onError]);
 
     // iframe 加载完成处理
     const handleIframeLoad = () => {
         setIsLoading(false);
         onLoad?.();
-        
+
         // 尝试与iframe通信
         try {
             const iframe = iframeRef.current;
@@ -72,7 +72,7 @@ export default function IframePreview({
                 // 发送消息到iframe（如果需要）
                 iframe.contentWindow.postMessage({
                     type: 'PARENT_READY',
-                    userId
+                    projectId
                 }, '*');
             }
         } catch (error) {
@@ -106,29 +106,29 @@ export default function IframePreview({
             }
 
             const { type, data } = event.data;
-            
+
             switch (type) {
                 case 'IFRAME_READY':
                     console.log('iframe已准备就绪');
                     setIsLoading(false);
                     break;
-                    
+
                 case 'IFRAME_ERROR':
                     console.error('iframe错误:', data);
                     setError(data.message || '预览发生错误');
                     break;
-                    
+
                 case 'IFRAME_NAVIGATION':
                     console.log('iframe导航:', data.url);
                     break;
-                    
+
                 default:
                     break;
             }
         };
 
         window.addEventListener('message', handleMessage);
-        
+
         return () => {
             window.removeEventListener('message', handleMessage);
         };
@@ -197,10 +197,10 @@ export default function IframePreview({
 }
 
 // 预览状态指示器组件
-export function PreviewStatus({ 
-    status 
-}: { 
-    status: 'loading' | 'ready' | 'error' | 'building' 
+export function PreviewStatus({
+    status
+}: {
+    status: 'loading' | 'ready' | 'error' | 'building'
 }) {
     const statusConfig = {
         loading: { color: 'text-blue-500', icon: '⏳', text: '加载中' },
@@ -220,7 +220,7 @@ export function PreviewStatus({
 }
 
 // 使用示例组件
-export function PreviewPanel({ userId }: { userId: string }) {
+export function PreviewPanel({ projectId }: { projectId: string }) {
     const [previewStatus, setPreviewStatus] = useState<'loading' | 'ready' | 'error' | 'building'>('loading');
 
     return (
@@ -232,14 +232,14 @@ export function PreviewPanel({ userId }: { userId: string }) {
                     <PreviewStatus status={previewStatus} />
                 </div>
                 <div className="text-xs text-gray-500">
-                    用户: {userId}
+                    项目: {projectId}
                 </div>
             </div>
 
             {/* 预览内容 */}
             <div className="flex-1">
                 <IframePreview
-                    userId={userId}
+                    projectId={projectId}
                     className="h-full"
                     onLoad={() => setPreviewStatus('ready')}
                     onError={() => setPreviewStatus('error')}

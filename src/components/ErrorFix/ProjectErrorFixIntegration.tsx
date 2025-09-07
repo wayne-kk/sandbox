@@ -267,7 +267,7 @@ export default function ProjectErrorFixIntegration({
                                         <div className="text-sm">
                                             <p className="font-medium mb-1">执行日志:</p>
                                             <div className="max-h-20 overflow-y-auto space-y-1">
-                                                {result.logs.slice(-3).map((log, logIndex) => (
+                                                {result.logs.slice(-3).map((log: string, logIndex: number) => (
                                                     <div key={logIndex} className="text-xs font-mono bg-gray-100 p-1 rounded">
                                                         {log}
                                                     </div>

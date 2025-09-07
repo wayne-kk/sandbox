@@ -10,13 +10,8 @@ export async function GET(
 ) {
     try {
         const { projectId } = await params;
-        const userId = request.headers.get('x-user-id');
 
-        if (!userId) {
-            return NextResponse.json({ error: '未授权' }, { status: 401 });
-        }
-
-        const files = await fileStorage.getProjectFiles(userId, projectId);
+        const files = await fileStorage.getProjectFiles(projectId);
 
         return NextResponse.json({
             success: true,
@@ -38,11 +33,6 @@ export async function POST(
 ) {
     try {
         const { projectId } = await params;
-        const userId = request.headers.get('x-user-id');
-
-        if (!userId) {
-            return NextResponse.json({ error: '未授权' }, { status: 401 });
-        }
 
         const body = await request.json();
         const { filePath, content, batch } = body;
@@ -56,7 +46,7 @@ export async function POST(
                 );
             }
 
-            await fileStorage.saveFiles(userId, projectId, batch);
+            await fileStorage.saveFiles(projectId, batch);
         } else {
             // 单个文件保存
             if (!filePath || content === undefined) {
@@ -66,7 +56,7 @@ export async function POST(
                 );
             }
 
-            await fileStorage.saveFile(userId, projectId, filePath, content);
+            await fileStorage.saveFile(projectId, filePath, content);
         }
 
         return NextResponse.json({

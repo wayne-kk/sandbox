@@ -22,8 +22,8 @@ export default function AIGeneratorPage() {
   const [stats, setStats] = useState({
     totalGenerations: 0,
     successRate: 0,
-    lastGenerated: null,
-    popularComponents: []
+    lastGenerated: null as string | null,
+    popularComponents: [] as string[]
   });
 
   // 处理文件生成后的回调

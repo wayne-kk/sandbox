@@ -10,10 +10,7 @@ export type { GenerateOptions, GenerateResult, GeneratedFile } from './dify-clie
 // 需求分析和生成
 export { RequirementGenerator } from './requirement-generator';
 export type {
-    RequirementOptions,
-    RequirementResult,
-    PageRequirement,
-    ComponentRequirement
+    RequirementOptions
 } from './requirement-generator';
 
 // 项目生成工作流
@@ -31,8 +28,9 @@ export { ComponentAnalyzer } from './component-analyzer';
 export { SmartContextBuilder } from './smart-context-builder';
 export { ProjectContextAnalyzer } from './project-context-analyzer';
 
-// AI 代理（如果有的话）
-export { default as AIAgent } from './ai-agent';
+// AI 代理
+export { AIAgent } from './ai-agent';
 
 // 重新导出默认实例
+import { ProjectGenerationWorkflow } from './project-generation-workflow';
 export default ProjectGenerationWorkflow;

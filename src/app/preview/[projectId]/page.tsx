@@ -13,9 +13,9 @@ function ComponentPreview({ files, projectId, sandboxUrl, componentPath }: { fil
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
 
   // 获取所有TSX组件文件
-  const componentFiles = Object.entries(files).filter(([path, content]) => 
-    path.endsWith('.tsx') && 
-    !path.includes('layout') && 
+  const componentFiles = Object.entries(files).filter(([path, content]) =>
+    path.endsWith('.tsx') &&
+    !path.includes('layout') &&
     !path.includes('page') &&
     content.includes('export')
   );
@@ -66,11 +66,10 @@ function ComponentPreview({ files, projectId, sandboxUrl, componentPath }: { fil
           <button
             key={filePath}
             onClick={() => setSelectedComponent(filePath)}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedComponent === filePath
-                ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedComponent === filePath
+              ? 'bg-blue-100 text-blue-700 border border-blue-200'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
           >
             {filePath.split('/').pop()?.replace('.tsx', '')}
           </button>
@@ -196,18 +195,17 @@ export default function PreviewPage() {
         const filesResponse = await fetch(`/api/preview/${projectId}`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': 'preview-user'
+            'Content-Type': 'application/json'
           }
         });
-        
+
         const filesData = await filesResponse.json();
         if (filesData.success) {
           setPreviewData({
             files: filesData.data.files || {},
             status: 'running'
           });
-          
+
           // 提取组件路径信息（仅单个组件生成时）
           if (filesData.data.componentInfo?.previewUrl) {
             setComponentPath(filesData.data.componentInfo.previewUrl);
@@ -303,9 +301,8 @@ export default function PreviewPage() {
             <p className="text-sm text-gray-500">项目ID: {projectId}</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${
-              previewData.status === 'running' ? 'bg-green-500' : 'bg-yellow-500'
-            }`} />
+            <div className={`w-2 h-2 rounded-full ${previewData.status === 'running' ? 'bg-green-500' : 'bg-yellow-500'
+              }`} />
             <span className="text-sm text-gray-600">
               {previewData.status === 'running' ? '运行中' : '准备中'}
             </span>

@@ -302,6 +302,7 @@ interface SmartContextOptions {
     maxTokens?: number;
     includeExamples?: boolean;
     includeRelationships?: boolean;
+    includeProjectContext?: boolean;
 }
 
 export type { UserRequirements, SmartContextOptions };

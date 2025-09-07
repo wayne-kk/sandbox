@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Editor } from '@monaco-editor/react';
+import Editor from './Editor';
 import TabbedPreview from '@/components/Preview/TabbedPreview';
 import { MonacoConfig } from '@/lib/monaco-config';
-import { 
-  Split, 
-  FileText, 
-  Save, 
-  Play, 
-  Settings, 
+import {
+  Split,
+  FileText,
+  Save,
+  Play,
+  Settings,
   FolderTree,
   Download,
   Upload,
@@ -52,7 +52,7 @@ export default function MainEditor({
       const entryFiles = Object.keys(files).filter(path =>
         path.includes('App.') || path.includes('main.') || path.includes('index.')
       );
-      
+
       const firstFile = entryFiles[0] || Object.keys(files)[0];
       if (firstFile) {
         openFile(firstFile);
@@ -130,14 +130,14 @@ export default function MainEditor({
   const closeTab = (filePath: string) => {
     setOpenTabs(prev => {
       const newTabs = prev.filter(tab => tab.path !== filePath);
-      
+
       // 如果关闭的是当前活跃Tab，切换到其他Tab
       if (activeTab === filePath && newTabs.length > 0) {
         setActiveTab(newTabs[newTabs.length - 1].path);
       } else if (newTabs.length === 0) {
         setActiveTab('');
       }
-      
+
       return newTabs;
     });
   };
@@ -151,8 +151,8 @@ export default function MainEditor({
     }));
 
     // 更新Tab状态
-    setOpenTabs(prev => prev.map(tab => 
-      tab.path === filePath 
+    setOpenTabs(prev => prev.map(tab =>
+      tab.path === filePath
         ? { ...tab, content, isDirty: tab.content !== content }
         : tab
     ));
@@ -164,10 +164,10 @@ export default function MainEditor({
     try {
       // 调用保存回调
       await onSave?.(files);
-      
+
       // 更新Tab状态（清除dirty标记）
       setOpenTabs(prev => prev.map(tab => ({ ...tab, isDirty: false })));
-      
+
       console.log('✅ 文件保存成功');
     } catch (error) {
       console.error('❌ 文件保存失败:', error);
@@ -206,7 +206,7 @@ export default function MainEditor({
             <h2 className="text-lg font-semibold text-gray-800">代码编辑器</h2>
             <span className="text-sm text-gray-500">({framework})</span>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <button
               onClick={saveFiles}
@@ -217,7 +217,7 @@ export default function MainEditor({
               <Save size={16} className={isSaving ? 'animate-pulse' : ''} />
               {isSaving ? '保存中...' : '保存'}
             </button>
-            
+
             <button
               onClick={() => setIsPreviewVisible(!isPreviewVisible)}
               className="flex items-center gap-1 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
@@ -226,7 +226,7 @@ export default function MainEditor({
               <Split size={16} />
               {isPreviewVisible ? '隐藏预览' : '显示预览'}
             </button>
-            
+
             <button
               onClick={refreshPreview}
               className="flex items-center gap-1 px-3 py-1 text-sm text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
@@ -247,17 +247,16 @@ export default function MainEditor({
                 项目文件
               </h3>
             </div>
-            
+
             <div className="p-2">
               {Object.keys(files).map((filePath) => (
                 <button
                   key={filePath}
                   onClick={() => openFile(filePath)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors ${
-                    activeTab === filePath
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors ${activeTab === filePath
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                 >
                   <span>{getFileIcon(filePath)}</span>
                   <span className="truncate">{filePath}</span>
@@ -277,11 +276,10 @@ export default function MainEditor({
                 {openTabs.map((tab) => (
                   <div
                     key={tab.path}
-                    className={`flex items-center gap-2 px-4 py-2 border-r border-gray-200 cursor-pointer transition-colors ${
-                      activeTab === tab.path
-                        ? 'bg-white text-gray-800'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 border-r border-gray-200 cursor-pointer transition-colors ${activeTab === tab.path
+                      ? 'bg-white text-gray-800'
+                      : 'text-gray-600 hover:bg-gray-50'
+                      }`}
                     onClick={() => setActiveTab(tab.path)}
                   >
                     <span>{getFileIcon(tab.path)}</span>
@@ -307,19 +305,16 @@ export default function MainEditor({
             <div className="flex-1">
               {activeFile ? (
                 <Editor
-                  height="100%"
                   language={activeFile.language}
                   value={activeFile.content}
                   fileName={activeFile.path}
                   onChange={(value) => updateFileContent(activeFile.path, value || '')}
-                  theme="vs-dark"
                   options={MonacoConfig.getEditorOptions({
                     fontSize: 14,
                     lineHeight: 20,
                     renderLineHighlight: 'all',
                     renderWhitespace: 'selection'
                   })}
-                  onMount={handleEditorDidMount}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-500">

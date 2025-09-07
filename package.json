@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -27,7 +28,11 @@
     "health": "curl -f http://localhost:3000/api/health || exit 1",
     "setup": "npm install && npm run db:generate && npm run db:push && npm run db:seed",
     "clean": "rm -rf .next node_modules/.cache",
-    "clean:all": "rm -rf .next node_modules/.cache node_modules && npm install"
+    "clean:all": "rm -rf .next node_modules/.cache node_modules && npm install",
+    "clean:sandbox": "rm -rf temp/*",
+    "prebuild": "npm run clean:sandbox",
+    "postbuild": "echo 'Build completed. Temp directories excluded, sandbox template included.'",
+    "build:test": "./scripts/build-test.sh"
   },
   "dependencies": {
     "@azure/openai": "^2.0.0",

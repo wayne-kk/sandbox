@@ -56,7 +56,7 @@ export default function Editor({ language, value, onChange, options = {}, fileNa
           break;
       }
     }
-    
+
     // 如果传入的是 typescript 但内容看起来像纯 JavaScript，降级为 javascript
     if (lang === 'typescript' && value) {
       const hasTypeScriptFeatures = /(?:interface\s+\w+|type\s+\w+\s*=|:\s*\w+|<\w+>|\sas\s+\w+|import\s+type)/i.test(value);
@@ -64,7 +64,7 @@ export default function Editor({ language, value, onChange, options = {}, fileNa
         return 'javascript';
       }
     }
-    
+
     return lang;
   }, [value]);
 
@@ -72,7 +72,7 @@ export default function Editor({ language, value, onChange, options = {}, fileNa
   const handleEditorDidMount = (editor: any, monaco: any) => {
     // 初始化Monaco配置
     MonacoConfig.configureTypeScript(monaco);
-    
+
     // 设置语言和主题
     const detectedLanguage = getActualLanguage(language, fileName);
     monaco.editor.setModelLanguage(editor.getModel(), detectedLanguage);
@@ -84,7 +84,7 @@ export default function Editor({ language, value, onChange, options = {}, fileNa
     if (detectedLanguage === 'javascript') {
       MonacoConfig.forceCleanMarkers(monaco, 'javascript');
       MonacoConfig.refreshJavaScriptConfig(monaco);
-      
+
       // 多重延迟清理确保彻底
       setTimeout(() => MonacoConfig.forceCleanMarkers(monaco, 'javascript'), 100);
       setTimeout(() => MonacoConfig.forceCleanMarkers(monaco, 'javascript'), 300);
@@ -95,7 +95,7 @@ export default function Editor({ language, value, onChange, options = {}, fileNa
     editor.getModel().onDidChangeLanguage(() => {
       const currentLanguage = editor.getModel().getLanguageId();
       console.log('Language changed to:', currentLanguage);
-      
+
       if (currentLanguage === 'javascript') {
         // 立即清理并延迟刷新JS配置
         MonacoConfig.forceCleanMarkers(monaco, 'javascript');
@@ -124,37 +124,37 @@ export default function Editor({ language, value, onChange, options = {}, fileNa
   useEffect(() => {
     if (editorRef.current && monacoRef.current && fileName) {
       const newLanguage = getActualLanguage(language, fileName);
-      const currentLanguage = editorRef.current.getModel().getLanguageId();
-      
+      const currentLanguage = editorRef.current.getModel()?.getLanguageId();
+
       if (newLanguage !== currentLanguage) {
         console.log('Switching language from', currentLanguage, 'to', newLanguage);
-        
+
         const model = editorRef.current.getModel();
-        
+
         // 立即强制清除所有错误标记
         MonacoConfig.forceCleanMarkers(monacoRef.current);
-        
+
         // 切换语言
         monacoRef.current.editor.setModelLanguage(model, newLanguage);
-        
+
         // 针对不同语言类型的特殊处理
         if (newLanguage === 'javascript') {
           // JavaScript: 立即和延迟双重处理
           MonacoConfig.forceCleanMarkers(monacoRef.current, 'javascript');
           MonacoConfig.refreshJavaScriptConfig(monacoRef.current);
-          
+
           // 额外的延迟清理，确保没有残留
           setTimeout(() => {
             MonacoConfig.forceCleanMarkers(monacoRef.current, 'javascript');
           }, 200);
-          
+
         } else if (newLanguage === 'typescript') {
           // TypeScript: 重新配置
           setTimeout(() => {
             MonacoConfig.configureTypeScript(monacoRef.current);
           }, 50);
         }
-        
+
         // 最后的兜底清理
         setTimeout(() => {
           if (editorRef.current?.getModel()?.getLanguageId() === 'javascript') {
@@ -168,13 +168,13 @@ export default function Editor({ language, value, onChange, options = {}, fileNa
   // 监听value变化，在某些情况下清理错误
   useEffect(() => {
     if (editorRef.current && monacoRef.current) {
-      const currentLanguage = editorRef.current.getModel().getLanguageId();
+      const currentLanguage = editorRef.current.getModel()?.getLanguageId();
       if (currentLanguage === 'javascript') {
         // 延迟清理，避免在输入时显示不必要的错误
         const cleanup = setTimeout(() => {
           MonacoConfig.forceCleanMarkers(monacoRef.current, 'javascript');
         }, 300);
-        
+
         return () => clearTimeout(cleanup);
       }
     }
@@ -182,7 +182,7 @@ export default function Editor({ language, value, onChange, options = {}, fileNa
 
   // 获取实际使用的语言
   const actualLanguage = getActualLanguage(language, fileName);
-  
+
   // 获取编辑器选项
   const editorOptions = MonacoConfig.getEditorOptions({
     ...options,

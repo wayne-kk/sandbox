@@ -98,11 +98,11 @@ ${optimizedContext.suggestions.join('\n')}`;
         }
 
         // 3. 添加智能分析结果到上下文
-        if (generationContext) {
+        if (generationContext && projectInsight) {
             enhancedContext += `
 
 智能项目分析结果:
-项目结构: ${projectInsight.totalFiles} 个文件, ${projectInsight.components.total} 个组件
+项目结构: ${projectInsight.projectStructure.totalFiles} 个文件, ${projectInsight.components.total} 个组件
 样式框架: ${projectInsight.styling.framework}
 TypeScript 使用率: ${projectInsight.codeQuality.typescriptUsage}%
 
@@ -125,7 +125,9 @@ ${generationContext.integrationPoints.join('\n')}`;
 
         const generateResult = await difyClient.generateUI(prompt, {
             projectType,
-            context: enhancedContext
+            customParams: {
+                context: enhancedContext
+            }
         });
 
         console.log(`✅ Dify 生成完成，共生成 ${generateResult.files.length} 个文件`);
@@ -203,10 +205,10 @@ ${generationContext.integrationPoints.join('\n')}`;
                 conversationId: difyClient.getCurrentConversationId(),
 
                 // 智能分析结果
-                smartAnalysis: generationContext ? {
+                smartAnalysis: generationContext && projectInsight ? {
                     userIntent: generationContext.userIntent,
                     projectInsight: {
-                        totalFiles: projectInsight.totalFiles,
+                        totalFiles: projectInsight.projectStructure.totalFiles,
                         components: projectInsight.components.total,
                         styling: projectInsight.styling.framework,
                         typescriptUsage: projectInsight.codeQuality.typescriptUsage

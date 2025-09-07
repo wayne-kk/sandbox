@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Send, 
-  Sparkles, 
-  FileText, 
-  Code2, 
-  Loader2, 
-  CheckCircle, 
+import {
+  Send,
+  Sparkles,
+  FileText,
+  Code2,
+  Loader2,
+  CheckCircle,
   AlertCircle,
   Eye,
   RefreshCw,
@@ -91,7 +91,7 @@ interface GenerationResult {
 }
 
 const FEATURE_TAGS = [
-  "响应式设计", "TypeScript", "Tailwind CSS", "无障碍访问", "动画效果", 
+  "响应式设计", "TypeScript", "Tailwind CSS", "无障碍访问", "动画效果",
   "状态管理", "表单验证", "错误处理", "加载状态", "国际化"
 ];
 
@@ -99,10 +99,10 @@ const COMPONENT_TYPES = [
   { value: 'component', label: 'UI组件', description: '可复用的界面组件' }
 ];
 
-export default function DifyUIGenerator({ 
+export default function DifyUIGenerator({
   projectId = 'default-project',
   onFilesGenerated,
-  onPreview 
+  onPreview
 }: DifyUIGeneratorProps) {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -114,7 +114,7 @@ export default function DifyUIGenerator({
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [componentType, setComponentType] = useState<string>('component');
-  
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -133,8 +133,8 @@ export default function DifyUIGenerator({
 
   // 处理特性标签选择
   const handleFeatureToggle = (feature: string) => {
-    setSelectedFeatures(prev => 
-      prev.includes(feature) 
+    setSelectedFeatures(prev =>
+      prev.includes(feature)
         ? prev.filter(f => f !== feature)
         : [...prev, feature]
     );
@@ -166,7 +166,7 @@ export default function DifyUIGenerator({
       setProgress(30);
 
       // 构建增强的提示词
-      const enhancedPrompt = selectedFeatures.length > 0 
+      const enhancedPrompt = selectedFeatures.length > 0
         ? `${prompt.trim()}\n\n要求包含以下特性：${selectedFeatures.join(', ')}`
         : prompt.trim();
 
@@ -197,7 +197,7 @@ export default function DifyUIGenerator({
       if (data.success) {
         setProgress(100);
         addLog(`✅ 生成完成！共生成 ${data.data?.filesGenerated || 0} 个文件`);
-        
+
         if (data.data?.files) {
           data.data.files.forEach((file: GeneratedFile) => {
             addLog(`📄 ${file.path} (${file.size} 字符)`);
@@ -214,7 +214,7 @@ export default function DifyUIGenerator({
         }
 
         addLog('🎉 代码已成功写入 sandbox 目录！');
-        
+
         // 自动启动预览
         addLog('🚀 正在自动启动预览...');
         setTimeout(() => {
@@ -271,7 +271,7 @@ export default function DifyUIGenerator({
   // 下载生成的文件
   const handleDownloadFiles = () => {
     if (!result?.data?.files) return;
-    
+
     result.data.files.forEach((file: GeneratedFile) => {
       const blob = new Blob([file.content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
@@ -281,7 +281,7 @@ export default function DifyUIGenerator({
       a.click();
       URL.revokeObjectURL(url);
     });
-    
+
     addLog('📥 文件下载完成');
   };
 
@@ -306,10 +306,10 @@ export default function DifyUIGenerator({
       }
 
       const sandboxData = await response.json();
-      
+
       if (sandboxData.success) {
         const baseUrl = sandboxData.url || `http://localhost:${sandboxData.port || 3100}`;
-        
+
         let finalPreviewUrl = baseUrl;
         if (currentResult?.data?.componentInfo?.previewUrl) {
           finalPreviewUrl = `${baseUrl}${currentResult.data.componentInfo.previewUrl}`;
@@ -317,7 +317,7 @@ export default function DifyUIGenerator({
         } else {
           addLog(`🌐 项目预览地址: ${finalPreviewUrl}`);
         }
-        
+
         setPreviewUrl(finalPreviewUrl);
         setPreviewStatus('ready');
         addLog('✅ Sandbox 服务器启动中...');
@@ -348,8 +348,7 @@ export default function DifyUIGenerator({
       const response = await fetch(`/api/preview/${projectId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': 'current-user'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ files })
       });
@@ -382,7 +381,7 @@ export default function DifyUIGenerator({
       <div className="flex-shrink-0">
         {renderComponentGenerator()}
       </div>
-      
+
       {/* 预览区域 - 占据剩余空间 */}
       <div className="flex-1 min-h-0">
         {renderInlinePreview()}
@@ -427,11 +426,10 @@ export default function DifyUIGenerator({
                     <button
                       key={type.value}
                       onClick={() => setComponentType(type.value)}
-                      className={`p-3 rounded-lg border-2 text-left transition-all duration-200 ${
-                        componentType === type.value
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
+                      className={`p-3 rounded-lg border-2 text-left transition-all duration-200 ${componentType === type.value
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
                     >
                       <div className="font-medium text-sm mb-1">{type.label}</div>
                       <div className="text-xs text-gray-500">{type.description}</div>
@@ -450,11 +448,10 @@ export default function DifyUIGenerator({
                     <Badge
                       key={feature}
                       variant={selectedFeatures.includes(feature) ? "default" : "outline"}
-                      className={`cursor-pointer transition-all duration-200 ${
-                        selectedFeatures.includes(feature)
-                          ? 'bg-blue-500 text-white hover:bg-blue-600'
-                          : 'hover:bg-gray-100 hover:border-gray-300'
-                      }`}
+                      className={`cursor-pointer transition-all duration-200 ${selectedFeatures.includes(feature)
+                        ? 'bg-blue-500 text-white hover:bg-blue-600'
+                        : 'hover:bg-gray-100 hover:border-gray-300'
+                        }`}
                       onClick={() => handleFeatureToggle(feature)}
                     >
                       {feature}
@@ -497,7 +494,7 @@ export default function DifyUIGenerator({
                       <RefreshCw className="w-4 h-4 mr-2" />
                       重新生成
                     </Button>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -507,7 +504,7 @@ export default function DifyUIGenerator({
                       <Copy className="w-4 h-4 mr-2" />
                       复制提示词
                     </Button>
-                    
+
                     {onPreview && (
                       <Button
                         variant="outline"
@@ -521,7 +518,7 @@ export default function DifyUIGenerator({
                     )}
                   </>
                 )}
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -668,7 +665,7 @@ export default function DifyUIGenerator({
                       <Download className="w-4 h-4 mr-2" />
                       下载文件
                     </Button>
-                    
+
                     {/* 预览相关按钮 */}
                     {previewStatus === 'idle' && (
                       <Button
@@ -680,7 +677,7 @@ export default function DifyUIGenerator({
                         启动预览
                       </Button>
                     )}
-                    
+
                     {previewStatus === 'loading' && (
                       <Button
                         disabled
@@ -691,7 +688,7 @@ export default function DifyUIGenerator({
                         预览启动中...
                       </Button>
                     )}
-                    
+
                     {previewStatus === 'ready' && (
                       <>
                         <Button
@@ -712,7 +709,7 @@ export default function DifyUIGenerator({
                         </Button>
                       </>
                     )}
-                    
+
                     {previewStatus === 'error' && (
                       <Button
                         onClick={() => handleStartPreview()}
@@ -821,11 +818,10 @@ export default function DifyUIGenerator({
               <div className="flex items-center gap-1 bg-white rounded border">
                 <button
                   onClick={() => setPreviewDevice('desktop')}
-                  className={`px-3 py-1 text-sm rounded transition-colors ${
-                    previewDevice === 'desktop' 
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${previewDevice === 'desktop'
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                   title="桌面端 (1200px+)"
                 >
                   <Monitor className="w-4 h-4 mr-1 inline" />
@@ -833,11 +829,10 @@ export default function DifyUIGenerator({
                 </button>
                 <button
                   onClick={() => setPreviewDevice('tablet')}
-                  className={`px-3 py-1 text-sm rounded transition-colors ${
-                    previewDevice === 'tablet' 
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${previewDevice === 'tablet'
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                   title="平板端 (768px - 1024px)"
                 >
                   <Smartphone className="w-4 h-4 mr-1 inline" />
@@ -845,11 +840,10 @@ export default function DifyUIGenerator({
                 </button>
                 <button
                   onClick={() => setPreviewDevice('mobile')}
-                  className={`px-3 py-1 text-sm rounded transition-colors ${
-                    previewDevice === 'mobile' 
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${previewDevice === 'mobile'
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                   title="移动端 (< 768px)"
                 >
                   <Smartphone className="w-4 h-4 mr-1 inline" />
@@ -857,7 +851,7 @@ export default function DifyUIGenerator({
                 </button>
               </div>
             </div>
-            
+
             {previewUrl && (
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <button
@@ -915,11 +909,11 @@ export default function DifyUIGenerator({
           {previewStatus === 'ready' && previewUrl && (
             <div className="h-full border rounded-lg overflow-hidden bg-white shadow-sm">
               {/* 预览iframe容器 */}
-              <div 
+              <div
                 className="relative bg-gray-100 h-full"
                 style={{
-                  maxWidth: previewDevice === 'desktop' ? '100%' : 
-                           previewDevice === 'tablet' ? '768px' : '375px',
+                  maxWidth: previewDevice === 'desktop' ? '100%' :
+                    previewDevice === 'tablet' ? '768px' : '375px',
                   margin: previewDevice === 'desktop' ? '0' : '0 auto'
                 }}
               >
@@ -930,7 +924,7 @@ export default function DifyUIGenerator({
                   sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
                   style={{ backgroundColor: 'white' }}
                 />
-                
+
                 {/* 设备边框装饰 */}
                 {previewDevice !== 'desktop' && (
                   <div className="absolute inset-0 pointer-events-none">

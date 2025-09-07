@@ -41,8 +41,8 @@ export class SupabaseFileStorageManager {
      * 从模板创建新项目
      */
     async createProjectFromTemplate(
-        userId: string, 
-        templateId: string, 
+        userId: string,
+        templateId: string,
         projectName: string,
         description?: string
     ): Promise<string> {
@@ -139,10 +139,10 @@ export class SupabaseFileStorageManager {
                 });
 
             if (error) {
-                throw new Error(\`保存文件失败: \${error.message}\`);
+                throw new Error(`保存文件失败: ${error.message}`);
             }
 
-            console.log(\`💾 文件已保存: \${projectId}/\${filePath} (\${fileSize} bytes)\`);
+            console.log(`💾 文件已保存: ${projectId}/${filePath} (${fileSize} bytes)`);
         } catch (error) {
             console.error('保存文件失败:', error);
             throw error;

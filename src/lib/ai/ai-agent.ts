@@ -73,7 +73,7 @@ export class AIAgent {
                         },
                         {
                             description: '🧩 添加组件',
-                            files: analysis.components.map(comp => ({
+                            files: analysis.components.map((comp: string) => ({
                                 path: `components/${comp}.tsx`,
                                 content: this.generateComponent(comp, analysis)
                             }))
