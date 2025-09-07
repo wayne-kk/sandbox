@@ -34,22 +34,22 @@ nano .env
 
 ### 查看服务状态
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 ### 查看日志
 ```bash
-docker-compose logs -f app
+docker compose logs -f app
 ```
 
 ### 停止服务
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ### 重启服务
 ```bash
-docker-compose restart
+docker compose restart
 ```
 
 ## 🛠️ 故障排除

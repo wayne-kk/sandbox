@@ -19,7 +19,7 @@ fi
 
 # 1. 清理旧容器
 echo -e "${YELLOW}🧹 清理旧容器...${NC}"
-docker-compose down --remove-orphans 2>/dev/null || true
+docker compose down --remove-orphans 2>/dev/null || true
 
 # 2. 创建必要目录
 echo -e "${YELLOW}📁 创建必要目录...${NC}"
@@ -27,7 +27,7 @@ mkdir -p data logs
 
 # 3. 构建并启动服务
 echo -e "${YELLOW}🔨 构建并启动服务...${NC}"
-docker-compose up -d
+docker compose up -d
 
 # 4. 等待服务启动
 echo -e "${YELLOW}⏳ 等待服务启动...${NC}"
@@ -35,14 +35,14 @@ sleep 15
 
 # 5. 检查服务状态
 echo -e "${YELLOW}🔍 检查服务状态...${NC}"
-if docker-compose ps | grep -q "Up"; then
+if docker compose ps | grep -q "Up"; then
     echo -e "${GREEN}✅ 服务启动成功！${NC}"
     echo -e "${GREEN}🌐 应用访问地址: http://localhost:3000${NC}"
     echo -e "${GREEN}🌐 Nginx 访问地址: http://localhost${NC}"
 else
     echo -e "${RED}❌ 服务启动失败${NC}"
     echo -e "${YELLOW}📋 查看日志:${NC}"
-    docker-compose logs
+    docker compose logs
     exit 1
 fi
 
@@ -56,7 +56,7 @@ for i in {1..30}; do
     if [ $i -eq 30 ]; then
         echo -e "${RED}❌ 健康检查失败${NC}"
         echo -e "${YELLOW}📋 查看应用日志:${NC}"
-        docker-compose logs app
+        docker compose logs app
         exit 1
     fi
     sleep 2
@@ -64,7 +64,7 @@ done
 
 echo -e "${GREEN}🎉 部署完成！${NC}"
 echo -e "${GREEN}📊 服务状态:${NC}"
-docker-compose ps
+docker compose ps
 
 echo -e "${YELLOW}💡 访问地址:${NC}"
 echo -e "${YELLOW}   - 直接访问应用: http://localhost:3000${NC}"
