@@ -1,11 +1,11 @@
-# 排除临时文件目录
+# 排除所有不必要的文件和目录
 temp/
-
-# 排除文档和配置
 docs/
 monitoring/
 sql/
 scripts/
+data/
+logs/
 
 # 排除开发文件
 .env.local
@@ -18,12 +18,7 @@ scripts/
 out/
 build/
 dist/
-
-# 排除依赖
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # 排除版本控制
 .git/
@@ -39,27 +34,32 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# 排除测试文件
+# 排除测试和日志文件
 coverage/
 .nyc_output/
-
-# 排除日志文件
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # 排除临时文件
 *.tmp
 *.temp
 
-# 排除 Docker 相关文件（避免递归）
+# 排除 Docker 相关文件
 Dockerfile*
 docker-compose*.yml
 .dockerignore
 
-# 排除部署脚本
+# 排除部署和配置文件
 deploy*.sh
 check-requirements.sh
 install-deps*.sh
+nginx*.conf
+*.md
+README.md
+DEPLOY.md
+DOCKERFILE-UNIFIED.md
 
-# 排除 nginx 配置
-nginx.conf
-sandbox.dockerfile
+# 排除 sandbox 目录（避免重复构建）
+sandbox/
