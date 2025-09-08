@@ -17,8 +17,8 @@ if ! docker info > /dev/null 2>&1; then
         exit 1
     fi
     
-# 1. 配置 Docker 镜像加速器
-echo -e "${YELLOW}🔧 配置 Docker 镜像加速器...${NC}"
+# 1. 配置 Docker 基础设置
+echo -e "${YELLOW}🔧 配置 Docker 基础设置...${NC}"
 sudo mkdir -p /etc/docker
 
 # 备份现有配置
@@ -29,15 +29,9 @@ fi
 
 # 跳过代理配置，使用基础Docker配置
 
-# 写入镜像加速器配置
+# 写入Docker基础配置
 sudo tee /etc/docker/daemon.json > /dev/null <<EOF
 {
-  "registry-mirrors": [
-    "https://docker.mirrors.ustc.edu.cn",
-    "https://hub-mirror.c.163.com",
-    "https://mirror.baidubce.com",
-    "https://ccr.ccs.tencentyun.com"
-  ],
   "max-concurrent-downloads": 3,
   "max-concurrent-uploads": 5,
   "log-driver": "json-file",
@@ -48,7 +42,7 @@ sudo tee /etc/docker/daemon.json > /dev/null <<EOF
 }
 EOF
 
-echo -e "${GREEN}✅ Docker 镜像加速器配置完成${NC}"
+echo -e "${GREEN}✅ Docker 基础配置完成${NC}"
 
 # 验证Docker配置文件语法
 echo -e "${YELLOW}🔍 验证Docker配置文件语法...${NC}"
@@ -137,60 +131,24 @@ IMAGES=(
     "node:18-alpine"
 )
 
-# 国内镜像源列表（更多选择）
-MIRRORS=(
-    "registry.cn-hangzhou.aliyuncs.com/library"
-    "registry.cn-hangzhou.aliyuncs.com/public"
-    "docker.mirrors.ustc.edu.cn"
-    "hub-mirror.c.163.com"
-    "mirror.baidubce.com"
-    "ccr.ccs.tencentyun.com"
-    "dockerhub.azk8s.cn"
-    "reg-mirror.qiniu.com"
-    "dockerhub.timeweb.cloud"
-    "docker.mirrors.sjtug.sjtu.edu.cn"
-)
-
 echo -e "${YELLOW}📋 需要拉取的镜像:${NC}"
 for image in "${IMAGES[@]}"; do
     echo -e "${YELLOW}  - $image${NC}"
 done
 
-# 尝试从不同镜像源拉取
-MIRROR_SUCCESS=false
+# 从官方源拉取镜像
 for image in "${IMAGES[@]}"; do
     echo -e "${YELLOW}🔄 拉取镜像: $image${NC}"
     
-    # 首先尝试官方源
-    if timeout 30 docker pull "$image" 2>/dev/null; then
-        echo -e "${GREEN}✅ 成功拉取: $image (官方源)${NC}"
-        MIRROR_SUCCESS=true
-        continue
+    if docker pull "$image"; then
+        echo -e "${GREEN}✅ 成功拉取: $image${NC}"
+    else
+        echo -e "${RED}❌ 拉取失败: $image${NC}"
+        echo -e "${YELLOW}⚠️  镜像拉取失败，将在后续步骤中重试${NC}"
     fi
-    
-    # 尝试国内镜像源
-    for mirror in "${MIRRORS[@]}"; do
-        mirror_image="$mirror/$image"
-        echo -e "${YELLOW}🔄 尝试镜像源: $mirror_image${NC}"
-        
-        if timeout 30 docker pull "$mirror_image" 2>/dev/null; then
-            echo -e "${GREEN}✅ 成功拉取: $mirror_image${NC}"
-            # 重新标记为官方名称
-            docker tag "$mirror_image" "$image"
-            echo -e "${GREEN}✅ 重新标记为: $image${NC}"
-            MIRROR_SUCCESS=true
-            break
-        else
-            echo -e "${RED}❌ 拉取失败: $mirror_image${NC}"
-        fi
-    done
 done
 
-if [ "$MIRROR_SUCCESS" = true ]; then
-    echo -e "${GREEN}🎉 镜像预拉取完成！${NC}"
-else
-    echo -e "${YELLOW}⚠️ 镜像预拉取失败，将使用官方镜像源${NC}"
-fi
+echo -e "${GREEN}🎉 镜像预拉取完成！${NC}"
 
 # 4. 清理旧容器
 echo -e "${YELLOW}🧹 清理旧容器...${NC}"
