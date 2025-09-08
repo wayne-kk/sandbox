@@ -7,7 +7,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - DATABASE_URL=file:./data/prod.db
       - DIFY_API_KEY=${DIFY_API_KEY:-}
       - DIFY_API_ENDPOINT=${DIFY_API_ENDPOINT:-}
