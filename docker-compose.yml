@@ -7,14 +7,14 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - ${PWD}/.env.local
+      - .env.local
     environment:
       - NODE_ENV=development
       - DATABASE_URL=${DATABASE_URL:-file:./data/prod.db}
       - DIFY_API_KEY=${DIFY_API_KEY:-}
-      - DIFY_API_ENDPOINT=${DIFY_API_ENDPOINT:-}
-      - COMPONENT_DIFY_API_KEY=${COMPONENT_DIFY_API_KEY:-}
-      - REQUIRMENT_DIFY_API_KEY=${REQUIRMENT_DIFY_API_KEY:-}
+      - DIFY_API_ENDPOINT=${DIFY_API_ENDPOINT:-http://152.136.41.186:32422/v1/workflows/run}
+      - COMPONENT_DIFY_API_KEY=${COMPONENT_DIFY_API_KEY:-app-p363bFgzxF8m9J1eyl5wasBT}
+      - REQUIRMENT_DIFY_API_KEY=${REQUIRMENT_DIFY_API_KEY:-app-YgkdhmiPidrzl8e1bbaIdNrb}
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
