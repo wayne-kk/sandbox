@@ -34,14 +34,13 @@ export function getServerHost(): string {
 
 // 获取 Sandbox URL
 export function getSandboxUrl(port?: number): string {
-    // 使用Nginx代理，不需要端口号
     const host = getServerHost();
     // 检查是否在客户端环境
     if (typeof window !== 'undefined') {
-        // 客户端：使用当前域名和端口
+        // 客户端：使用当前域名和端口，通过Nginx代理
         return `${window.location.protocol}//${window.location.host}/sandbox`;
     }
-    // 服务器端：使用配置的host和默认端口8080
+    // 服务器端：使用配置的host和默认端口8080，通过Nginx代理
     return `http://${host}:8080/sandbox`;
 }
 

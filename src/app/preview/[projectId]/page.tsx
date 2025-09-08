@@ -97,6 +97,7 @@ function ComponentPreview({ files, projectId, sandboxUrl, componentPath }: { fil
             title="Sandbox 组件预览"
             sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
             style={{ border: 'none' }}
+            key={sandboxUrl} // 添加key来强制重新渲染
             onError={() => {
               console.log('iframe加载失败，可能是服务器还未完全启动');
             }}

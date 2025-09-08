@@ -50,7 +50,8 @@ export default function TabbedPreview({
   // 构建预览URL
   useEffect(() => {
     if (projectId) {
-      setPreviewUrl(`/preview/${projectId}/`);
+      // 添加时间戳避免缓存
+      setPreviewUrl(`/preview/${projectId}/?t=${Date.now()}`);
     }
   }, [projectId]);
 

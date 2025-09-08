@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SandboxProjectManager } from "@/lib/sandbox-project-manager";
+import { getSandboxUrl } from "@/lib/constants/ports";
 
 const sandboxManager = SandboxProjectManager.getInstance();
 
@@ -28,7 +29,7 @@ export async function GET(
                 status: project.status,
                 createdAt: project.createdAt,
                 lastActiveAt: project.lastActiveAt,
-                url: `http://localhost:${project.port}`,
+                url: getSandboxUrl(project.port),
                 files: project.files
             }
         });

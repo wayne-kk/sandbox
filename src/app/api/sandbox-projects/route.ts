@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SandboxProjectManager } from "@/lib/sandbox-project-manager";
+import { getSandboxUrl } from "@/lib/constants/ports";
 
 const sandboxManager = SandboxProjectManager.getInstance();
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
                 status: project.status,
                 createdAt: project.createdAt,
                 lastActiveAt: project.lastActiveAt,
-                url: `http://localhost:${project.port}`
+                url: getSandboxUrl(project.port)
             }))
         });
     } catch (error) {
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
                 port: project.port,
                 status: project.status,
                 createdAt: project.createdAt,
-                url: `http://localhost:${project.port}`
+                url: getSandboxUrl(project.port)
             },
             message: "Sandbox 项目创建成功"
         });
