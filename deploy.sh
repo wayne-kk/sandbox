@@ -283,6 +283,10 @@ echo -e "${YELLOW}🔨 构建并启动服务...${NC}"
 if [[ "$1" == "--no-build" || "$1" == "-n" ]]; then
     echo -e "${YELLOW}⚡ 跳过重新构建，直接启动服务...${NC}"
     docker compose up -d
+elif [[ "$1" == "--dev" || "$1" == "-d" ]]; then
+    echo -e "${YELLOW}🔧 开发模式：使用Volume挂载，代码修改立即生效...${NC}"
+    echo -e "${YELLOW}💡 注意：开发模式下代码修改会立即生效，无需重新构建${NC}"
+    docker compose up -d
 else
     # 强制重新构建，不使用缓存，确保代码更新生效
     echo -e "${YELLOW}🔄 强制重新构建镜像...${NC}"
@@ -294,6 +298,16 @@ fi
 # 8. 等待服务启动
 echo -e "${YELLOW}⏳ 等待服务启动...${NC}"
 sleep 20
+
+# 8.1 网络连接测试
+echo -e "${YELLOW}🔍 测试网络连接...${NC}"
+if curl -s --connect-timeout 10 --max-time 30 -I http://152.136.41.186:32422/v1/workflows/run > /dev/null 2>&1; then
+    echo -e "${GREEN}   ✅ Dify API 连接正常${NC}"
+else
+    echo -e "${RED}   ❌ Dify API 连接失败${NC}"
+    echo -e "${YELLOW}   💡 运行 ./fix-network-issues.sh 修复网络问题${NC}"
+    echo -e "${YELLOW}   💡 或运行 ./diagnose-network.sh 获取详细诊断信息${NC}"
+fi
 
 # 9. 检查服务状态
 echo -e "${YELLOW}🔍 检查服务状态...${NC}"
@@ -439,6 +453,15 @@ echo -e "${YELLOW}   # 注意：Sandbox项目现在通过Nginx代理访问，无
 echo -e "${GREEN}📚 使用说明:${NC}"
 echo -e "${GREEN}   - 完整部署: ./deploy.sh${NC}"
 echo -e "${GREEN}   - 快速启动: ./deploy.sh --quick 或 ./deploy.sh -q${NC}"
+echo -e "${GREEN}   - 开发模式: ./deploy.sh --dev 或 ./deploy.sh -d (代码修改立即生效)${NC}"
 echo -e "${GREEN}   - 跳过构建: ./deploy.sh --no-build 或 ./deploy.sh -n${NC}"
+echo -e "${GREEN}   - 网络诊断: ./diagnose-network.sh${NC}"
 echo -e "${GREEN}   - 查看日志: docker compose logs -f${NC}"
 echo -e "${GREEN}   - 停止服务: docker compose down${NC}"
+echo ""
+echo -e "${YELLOW}🔧 故障排除:${NC}"
+echo -e "${YELLOW}   - 如果 Dify API 连接失败，运行: ./diagnose-network.sh${NC}"
+echo -e "${YELLOW}   - 修复网络问题: ./fix-network-issues.sh${NC}"
+echo -e "${YELLOW}   - 测试容器内网络: curl http://localhost:3000/api/network-test${NC}"
+echo -e "${YELLOW}   - 容器内网络测试: docker exec -it v0-sandbox-app ./test-container-network.sh${NC}"
+echo -e "${YELLOW}   - 检查容器日志: docker compose logs app${NC}"

@@ -91,25 +91,64 @@ export class DifyClient {
         console.log(`📦 发送给 Dify 的请求体:`, requestBody);
         console.log(`🔄 options`, this.apiEndpoint, options);
 
-        const response = await fetch(this.apiEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey || process.env.COMPONENT_DIFY_API_KEY}`,
-                ...options.headers // 允许自定义请求头
-            },
-            body: JSON.stringify(requestBody)
-        });
+        // 添加重试机制
+        const maxRetries = 3;
+        const retryDelay = 2000; // 2秒
 
-        console.log('🔄 Dify API 接口响应...', response);
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`🔄 尝试连接 Dify API (第 ${attempt}/${maxRetries} 次)...`);
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Dify API 请求失败: ${response.status} - ${errorText}`);
+                // 创建 AbortController 用于超时控制
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+
+                const response = await fetch(this.apiEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiKey || process.env.COMPONENT_DIFY_API_KEY}`,
+                        ...options.headers // 允许自定义请求头
+                    },
+                    body: JSON.stringify(requestBody),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                console.log('🔄 Dify API 接口响应...', response);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Dify API 请求失败: ${response.status} - ${errorText}`);
+                }
+
+                // 直接返回 JSON 响应
+                return await response.json();
+
+            } catch (error) {
+                console.error(`❌ 第 ${attempt} 次尝试失败:`, error);
+
+                // 如果是最后一次尝试，抛出错误
+                if (attempt === maxRetries) {
+                    // 提供更详细的错误信息
+                    if (error instanceof Error) {
+                        if (error.name === 'AbortError') {
+                            throw new Error(`Dify API 连接超时 (30秒)，请检查网络连接和服务器状态`);
+                        } else if (error.message.includes('fetch failed')) {
+                            throw new Error(`Dify API 连接失败，请检查网络连接和服务器地址: ${this.apiEndpoint}`);
+                        } else if (error.message.includes('ConnectTimeoutError')) {
+                            throw new Error(`Dify API 连接超时，请检查网络连接和防火墙设置`);
+                        }
+                    }
+                    throw error;
+                }
+
+                // 等待后重试
+                console.log(`⏳ 等待 ${retryDelay}ms 后重试...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+            }
         }
-
-        // 直接返回 JSON 响应
-        return await response.json();
     }
 
     /**
