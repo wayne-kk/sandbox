@@ -238,8 +238,15 @@ export default function PreviewPage() {
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
-            // 构建完整的组件URL
-            const fullUrl = componentPath ? `${data.url}${componentPath}` : data.url;
+            // 构建完整的组件URL，避免双斜杠
+            let fullUrl = data.url;
+            if (componentPath) {
+              const cleanComponentPath = componentPath.startsWith('/') 
+                ? componentPath.substring(1) 
+                : componentPath;
+              const cleanBaseUrl = data.url.endsWith('/') ? data.url.slice(0, -1) : data.url;
+              fullUrl = `${cleanBaseUrl}/${cleanComponentPath}`;
+            }
             setSandboxUrl(fullUrl);
             console.log('✅ Sandbox URL已设置:', fullUrl);
           } else {

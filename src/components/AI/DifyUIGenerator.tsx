@@ -313,7 +313,12 @@ export default function DifyUIGenerator({
 
         let finalPreviewUrl = baseUrl;
         if (currentResult?.data?.componentInfo?.previewUrl) {
-          finalPreviewUrl = `${baseUrl}${currentResult.data.componentInfo.previewUrl}`;
+          // 确保URL拼接正确，避免双斜杠
+          const componentPath = currentResult.data.componentInfo.previewUrl.startsWith('/') 
+            ? currentResult.data.componentInfo.previewUrl.substring(1) 
+            : currentResult.data.componentInfo.previewUrl;
+          const baseUrlClean = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+          finalPreviewUrl = `${baseUrlClean}/${componentPath}`;
           addLog(`🎯 组件预览地址: ${finalPreviewUrl}`);
         } else {
           addLog(`🌐 项目预览地址: ${finalPreviewUrl}`);
