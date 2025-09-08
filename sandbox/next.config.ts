@@ -2,8 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  basePath: '/sandbox',
-  assetPrefix: '/sandbox',
+  // 移除 basePath 和 assetPrefix，让 Nginx 处理路径重写
+  // basePath: '/sandbox',
+  // assetPrefix: '/sandbox',
+  output: 'standalone',
   images: {
     remotePatterns: [
       {

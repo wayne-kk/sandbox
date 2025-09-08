@@ -289,7 +289,7 @@ elif [[ "$1" == "--dev" || "$1" == "-d" ]]; then
     docker compose up -d
 else
     # 强制重新构建，不使用缓存，确保代码更新生效
-    echo -e "${YELLOW}🔄 强制重新构建镜像...${NC}"
+    echo -e "${YELLOW}🔄 强制重新构建镜像（生产环境）...${NC}"
     docker compose build --no-cache
     echo -e "${YELLOW}🚀 启动服务...${NC}"
     docker compose up -d
