@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: production
+      target: ${BUILD_TARGET:-production}
     container_name: v0-sandbox-app
     ports:
       - "3000:3000"

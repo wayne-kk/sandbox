@@ -315,10 +315,12 @@ else
     # 生产环境构建
     if [ "$QUICK_START" = true ]; then
         echo -e "${YELLOW}🔄 快速构建镜像（开发模式）...${NC}"
-        docker compose build --target development
+        # 使用开发模式构建
+        BUILD_TARGET=development docker compose build
     else
         echo -e "${YELLOW}🔄 完整构建镜像（生产环境）...${NC}"
-        docker compose build --target production --no-cache
+        # 使用生产模式构建
+        BUILD_TARGET=production docker compose build --no-cache
     fi
     echo -e "${YELLOW}🚀 启动服务...${NC}"
     docker compose up -d

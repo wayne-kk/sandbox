@@ -38,7 +38,7 @@ if docker images | grep -q "v0-sandbox.*app"; then
 else
     echo -e "${YELLOW}🔄 构建开发镜像（快速模式）...${NC}"
     # 使用开发模式构建，跳过生产构建步骤
-    docker compose build --target development
+    BUILD_TARGET=development docker compose build
     docker compose up -d
 fi
 
