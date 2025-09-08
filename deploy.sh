@@ -278,7 +278,18 @@ mkdir -p data logs
 
 # 7. 构建并启动服务
 echo -e "${YELLOW}🔨 构建并启动服务...${NC}"
-docker compose up -d
+
+# 检查是否需要重新构建
+if [[ "$1" == "--no-build" || "$1" == "-n" ]]; then
+    echo -e "${YELLOW}⚡ 跳过重新构建，直接启动服务...${NC}"
+    docker compose up -d
+else
+    # 强制重新构建，不使用缓存，确保代码更新生效
+    echo -e "${YELLOW}🔄 强制重新构建镜像...${NC}"
+    docker compose build --no-cache
+    echo -e "${YELLOW}🚀 启动服务...${NC}"
+    docker compose up -d
+fi
 
 # 8. 等待服务启动
 echo -e "${YELLOW}⏳ 等待服务启动...${NC}"
@@ -428,5 +439,6 @@ echo -e "${YELLOW}   # 注意：Sandbox项目现在通过Nginx代理访问，无
 echo -e "${GREEN}📚 使用说明:${NC}"
 echo -e "${GREEN}   - 完整部署: ./deploy.sh${NC}"
 echo -e "${GREEN}   - 快速启动: ./deploy.sh --quick 或 ./deploy.sh -q${NC}"
+echo -e "${GREEN}   - 跳过构建: ./deploy.sh --no-build 或 ./deploy.sh -n${NC}"
 echo -e "${GREEN}   - 查看日志: docker compose logs -f${NC}"
 echo -e "${GREEN}   - 停止服务: docker compose down${NC}"
