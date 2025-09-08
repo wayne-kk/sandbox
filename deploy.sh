@@ -33,23 +33,23 @@ if [ ! -z "$https_proxy" ] || [ ! -z "$http_proxy" ]; then
     echo -e "${YELLOW}🔍 检测到代理设置，配置 Docker 代理...${NC}"
     echo -e "${GREEN}   代理地址: $https_proxy${NC}"
     
-    # 配置 Docker 系统服务代理
-    sudo mkdir -p /etc/systemd/system/docker.service.d
-    sudo tee /etc/systemd/system/docker.service.d/http-proxy.conf > /dev/null <<EOF
+    # 检测操作系统类型
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux系统配置systemd代理
+        sudo mkdir -p /etc/systemd/system/docker.service.d
+        sudo tee /etc/systemd/system/docker.service.d/http-proxy.conf > /dev/null <<EOF
 [Service]
 Environment="HTTP_PROXY=$http_proxy"
 Environment="HTTPS_PROXY=$https_proxy"
 Environment="NO_PROXY=localhost,127.0.0.1"
 EOF
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS系统，Docker Desktop会自动读取系统代理设置
+        echo -e "${GREEN}✅ macOS系统，Docker Desktop将使用系统代理设置${NC}"
+    fi
     
-    PROXY_CONFIG=',
-  "proxies": {
-    "default": {
-      "httpProxy": "'${http_proxy:-$https_proxy}'",
-      "httpsProxy": "'${https_proxy:-$http_proxy}'",
-      "noProxy": "localhost,127.0.0.1"
-    }
-  }'
+    # 修复JSON配置语法
+    PROXY_CONFIG=',"proxies":{"default":{"httpProxy":"'${http_proxy:-$https_proxy}'","httpsProxy":"'${https_proxy:-$http_proxy}'","noProxy":"localhost,127.0.0.1"}}'
 fi
 
 # 写入镜像加速器配置
@@ -73,13 +73,48 @@ EOF
 
 echo -e "${GREEN}✅ Docker 镜像加速器配置完成${NC}"
 
+# 验证Docker配置文件语法
+echo -e "${YELLOW}🔍 验证Docker配置文件语法...${NC}"
+if command -v python3 >/dev/null 2>&1; then
+    if python3 -m json.tool /etc/docker/daemon.json >/dev/null 2>&1; then
+        echo -e "${GREEN}✅ Docker配置文件语法正确${NC}"
+    else
+        echo -e "${RED}❌ Docker配置文件语法错误${NC}"
+        echo -e "${YELLOW}📋 配置文件内容:${NC}"
+        cat /etc/docker/daemon.json
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}⚠️  无法验证JSON语法，请手动检查配置文件${NC}"
+fi
+
 # 2. 重启 Docker 服务
 echo -e "${YELLOW}🔄 重启 Docker 服务...${NC}"
-sudo systemctl daemon-reload
-sudo systemctl restart docker
+
+# 检测操作系统类型并执行相应的重启命令
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux系统使用systemctl
+    sudo systemctl daemon-reload
+    sudo systemctl restart docker
+    echo -e "${GREEN}✅ Linux系统Docker服务重启完成${NC}"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS系统，Docker Desktop需要手动重启
+    echo -e "${YELLOW}⚠️  macOS系统检测到，请手动重启Docker Desktop${NC}"
+    echo -e "${YELLOW}   或者运行: killall Docker && open /Applications/Docker.app${NC}"
+    # 尝试优雅地重启Docker Desktop
+    if command -v docker >/dev/null 2>&1; then
+        echo -e "${YELLOW}🔄 尝试重启Docker Desktop...${NC}"
+        killall Docker 2>/dev/null || true
+        sleep 5
+        open /Applications/Docker.app 2>/dev/null || true
+    fi
+else
+    echo -e "${YELLOW}⚠️  未知操作系统类型，跳过Docker服务重启${NC}"
+fi
 
 # 等待 Docker 启动
-sleep 10
+echo -e "${YELLOW}⏳ 等待Docker启动...${NC}"
+sleep 15
 
 # 测试 Docker 连接
 echo -e "${YELLOW}🧪 测试 Docker 连接...${NC}"
