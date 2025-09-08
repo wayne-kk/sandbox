@@ -228,6 +228,7 @@ export EXTERNAL_DOMAIN="$EXTERNAL_DOMAIN"
 export EXTERNAL_PROTOCOL="$EXTERNAL_PROTOCOL"
 export EXTERNAL_PORT=""
 export SANDBOX_PREVIEW_URL="http://$SERVER_IP/sandbox/"
+export NEXT_PUBLIC_SANDBOX_PREVIEW_URL="http://$SERVER_IP/sandbox/"
 
 echo -e "${YELLOW}💡 已设置环境变量:${NC}"
 echo -e "${YELLOW}   SERVER_HOST=$SERVER_IP${NC}"
