@@ -27,30 +27,7 @@ if [ -f /etc/docker/daemon.json ]; then
     echo -e "${GREEN}✅ 已备份现有 Docker 配置${NC}"
 fi
 
-# 检查是否有代理设置
-PROXY_CONFIG=""
-if [ ! -z "$https_proxy" ] || [ ! -z "$http_proxy" ]; then
-    echo -e "${YELLOW}🔍 检测到代理设置，配置 Docker 代理...${NC}"
-    echo -e "${GREEN}   代理地址: $https_proxy${NC}"
-    
-    # 检测操作系统类型
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux系统配置systemd代理
-        sudo mkdir -p /etc/systemd/system/docker.service.d
-        sudo tee /etc/systemd/system/docker.service.d/http-proxy.conf > /dev/null <<EOF
-[Service]
-Environment="HTTP_PROXY=$http_proxy"
-Environment="HTTPS_PROXY=$https_proxy"
-Environment="NO_PROXY=localhost,127.0.0.1"
-EOF
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS系统，Docker Desktop会自动读取系统代理设置
-        echo -e "${GREEN}✅ macOS系统，Docker Desktop将使用系统代理设置${NC}"
-    fi
-    
-    # 修复JSON配置语法
-    PROXY_CONFIG=',"proxies":{"default":{"httpProxy":"'${http_proxy:-$https_proxy}'","httpsProxy":"'${https_proxy:-$http_proxy}'","noProxy":"localhost,127.0.0.1"}}'
-fi
+# 跳过代理配置，使用基础Docker配置
 
 # 写入镜像加速器配置
 sudo tee /etc/docker/daemon.json > /dev/null <<EOF
@@ -67,7 +44,7 @@ sudo tee /etc/docker/daemon.json > /dev/null <<EOF
   "log-opts": {
     "max-size": "10m",
     "max-file": "3"
-  }$PROXY_CONFIG
+  }
 }
 EOF
 
@@ -94,9 +71,34 @@ echo -e "${YELLOW}🔄 重启 Docker 服务...${NC}"
 # 检测操作系统类型并执行相应的重启命令
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # Linux系统使用systemctl
+    echo -e "${YELLOW}🔄 重新加载systemd配置...${NC}"
     sudo systemctl daemon-reload
-    sudo systemctl restart docker
-    echo -e "${GREEN}✅ Linux系统Docker服务重启完成${NC}"
+    
+    echo -e "${YELLOW}🔄 重启Docker服务...${NC}"
+    if sudo systemctl restart docker; then
+        echo -e "${GREEN}✅ Linux系统Docker服务重启完成${NC}"
+    else
+        echo -e "${RED}❌ Docker服务重启失败，尝试恢复...${NC}"
+        
+        # 检查Docker服务状态
+        echo -e "${YELLOW}📋 Docker服务状态:${NC}"
+        sudo systemctl status docker --no-pager -l
+        
+        # 尝试恢复原始配置
+        if [ -f /etc/docker/daemon.json.backup ]; then
+            echo -e "${YELLOW}🔄 恢复原始Docker配置...${NC}"
+            sudo cp /etc/docker/daemon.json.backup /etc/docker/daemon.json
+            sudo systemctl daemon-reload
+            sudo systemctl restart docker
+            echo -e "${GREEN}✅ 已恢复原始配置并重启Docker${NC}"
+        else
+            echo -e "${YELLOW}🔄 删除可能损坏的配置文件...${NC}"
+            sudo rm -f /etc/docker/daemon.json
+            sudo systemctl daemon-reload
+            sudo systemctl restart docker
+            echo -e "${GREEN}✅ 已删除配置文件并重启Docker${NC}"
+        fi
+    fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS系统，Docker Desktop需要手动重启
     echo -e "${YELLOW}⚠️  macOS系统检测到，请手动重启Docker Desktop${NC}"
