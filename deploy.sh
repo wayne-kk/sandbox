@@ -185,7 +185,6 @@ if lsof -i :3000 >/dev/null 2>&1; then
     # 尝试停止占用3000端口的容器
     docker ps --format "table {{.Names}}\t{{.Ports}}" | grep ":3000->" | awk '{print $1}' | xargs -r docker stop 2>/dev/null || true
 fi
-1
 echo -e "${YELLOW}🧹 清理旧容器...${NC}"
 docker compose down --remove-orphans 2>/dev/null || true
 
