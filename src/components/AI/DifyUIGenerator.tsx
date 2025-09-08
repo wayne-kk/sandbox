@@ -308,7 +308,8 @@ export default function DifyUIGenerator({
       const sandboxData = await response.json();
 
       if (sandboxData.success) {
-        const baseUrl = sandboxData.url || `http://localhost:${sandboxData.port || 3100}`;
+        // 使用API返回的URL，如果没有则使用Nginx代理地址
+        const baseUrl = sandboxData.url || '/sandbox';
 
         let finalPreviewUrl = baseUrl;
         if (currentResult?.data?.componentInfo?.previewUrl) {

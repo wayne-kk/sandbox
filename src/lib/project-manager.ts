@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import { ProjectWebSocketManager } from './project-websocket';
+import { getSandboxUrl } from './constants/ports';
 
 import { GitHubDownloader } from './github-downloader';
 import net from 'net';
@@ -339,7 +340,7 @@ export class ProjectManager {
                     )) {
                         hasStarted = true;
                         instance.status.status = 'running';
-                        instance.status.url = `http://localhost:${port}`;
+                        instance.status.url = getSandboxUrl(port);
 
                         // 推送状态更新
                         this.wsManager.onProjectStatusChange(instance.id, instance.status.status, instance.status.url);
@@ -412,7 +413,7 @@ export class ProjectManager {
                         if (isReady && !hasStarted) {
                             hasStarted = true;
                             instance.status.status = 'running';
-                            instance.status.url = `http://localhost:${port}`;
+                            instance.status.url = getSandboxUrl(port);
 
                             // 推送状态更新
                             this.wsManager.onProjectStatusChange(instance.id, instance.status.status, instance.status.url);

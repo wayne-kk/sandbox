@@ -182,7 +182,7 @@ export default function PreviewPage() {
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sandboxUrl, setSandboxUrl] = useState<string>('http://localhost:3100');
+  const [sandboxUrl, setSandboxUrl] = useState<string>('');
   const [componentPath, setComponentPath] = useState<string>('');
 
   useEffect(() => {
@@ -236,14 +236,23 @@ export default function PreviewPage() {
         const response = await fetch('/api/sandbox/start');
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.running) {
+          if (data.success) {
             // 构建完整的组件URL
             const fullUrl = componentPath ? `${data.url}${componentPath}` : data.url;
             setSandboxUrl(fullUrl);
+            console.log('✅ Sandbox URL已设置:', fullUrl);
+          } else {
+            console.error('❌ Sandbox状态检查失败:', data.error);
           }
+        } else {
+          console.error('❌ Sandbox API调用失败:', response.status);
         }
       } catch (error) {
-        console.log('无法检测sandbox状态，使用默认端口');
+        console.error('❌ 无法检测sandbox状态:', error);
+        // 如果API调用失败，使用Nginx代理地址作为fallback
+        const fallbackUrl = componentPath ? `/sandbox${componentPath}` : '/sandbox';
+        setSandboxUrl(fallbackUrl);
+        console.log('🔄 使用Nginx代理fallback URL:', fallbackUrl);
       }
     };
 
