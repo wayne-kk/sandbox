@@ -74,10 +74,24 @@ export async function POST(request: Request) {
                 }
 
                 // 在容器中安装依赖
-                await dockerManager.execInContainer('npm install');
+                console.log('📦 在Docker容器中安装依赖...');
+                const installResult = await dockerManager.execInContainer('npm install --silent');
+
+                if (installResult.exitCode !== 0) {
+                    console.error('Docker容器中依赖安装失败:', installResult.stderr);
+                    throw new Error(`依赖安装失败: ${installResult.stderr}`);
+                }
+
+                console.log('✅ Docker容器中依赖安装完成');
 
                 // 启动开发服务器
-                dockerManager.execInContainer('npm run dev &');
+                console.log('🚀 在Docker容器中启动开发服务器...');
+                const devResult = await dockerManager.execInContainer('npm run dev &');
+
+                if (devResult.exitCode !== 0) {
+                    console.error('Docker容器中启动开发服务器失败:', devResult.stderr);
+                    throw new Error(`启动开发服务器失败: ${devResult.stderr}`);
+                }
 
                 return NextResponse.json({
                     success: true,
@@ -108,14 +122,18 @@ export async function POST(request: Request) {
         console.log("Running command:", command);
 
         // 先安装依赖
+        console.log('📦 在本地环境中安装依赖...');
         const { stdout: installOutput, stderr: installError } = await execAsync(command, {
-            timeout,
+            timeout: 120000, // 增加到2分钟超时
             cwd: sandboxDir,
         });
 
         if (installError && !installOutput) {
+            console.error('本地依赖安装失败:', installError);
             throw new Error(`依赖安装失败: ${installError}`);
         }
+
+        console.log('✅ 本地依赖安装完成');
 
         // 在后台启动开发服务器
         if (!useDocker) {
