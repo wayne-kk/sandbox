@@ -344,7 +344,7 @@ export class ProjectManager {
 
                         // 推送状态更新
                         this.wsManager.onProjectStatusChange(instance.id, instance.status.status, instance.status.url);
-
+                        console.log('getSandboxUrl(port)', getSandboxUrl(port), port)
                         console.log(`✅ 项目 ${instance.id} 启动成功，端口: ${port}, URL: ${instance.status.url}`);
                         resolve();
                     }

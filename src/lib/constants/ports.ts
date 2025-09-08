@@ -32,21 +32,6 @@ export function getServerHost(): string {
     return window.location.hostname;
 }
 
-// 获取外部访问地址（考虑外部Nginx）
-export function getExternalUrl(path: string = ''): string {
-    // 检查是否在客户端环境
-    if (typeof window !== 'undefined') {
-        // 客户端：使用当前域名和协议
-        return `${window.location.protocol}//${window.location.host}${path}`;
-    }
-
-    // 服务器端：使用配置的域名
-    const domain = process.env.EXTERNAL_DOMAIN || process.env.SERVER_HOST || 'localhost';
-    const protocol = process.env.EXTERNAL_PROTOCOL || 'http';
-    const port = process.env.EXTERNAL_PORT || '';
-
-    return `${protocol}://${domain}${port ? ':' + port : ''}${path}`;
-}
 
 // 获取 Sandbox URL
 export function getSandboxUrl(port?: number): string {
