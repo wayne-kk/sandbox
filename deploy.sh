@@ -227,11 +227,13 @@ export NEXT_PUBLIC_SERVER_HOST="$SERVER_IP"
 export EXTERNAL_DOMAIN="$EXTERNAL_DOMAIN"
 export EXTERNAL_PROTOCOL="$EXTERNAL_PROTOCOL"
 export EXTERNAL_PORT=""
+export SANDBOX_PREVIEW_URL="http://$SERVER_IP/sandbox/"
 
 echo -e "${YELLOW}💡 已设置环境变量:${NC}"
 echo -e "${YELLOW}   SERVER_HOST=$SERVER_IP${NC}"
 echo -e "${YELLOW}   EXTERNAL_DOMAIN=$EXTERNAL_DOMAIN${NC}"
 echo -e "${YELLOW}   EXTERNAL_PROTOCOL=$EXTERNAL_PROTOCOL${NC}"
+echo -e "${YELLOW}   SANDBOX_PREVIEW_URL=http://$SERVER_IP/sandbox/${NC}"
 
 # 6. 检查环境变量文件
 echo -e "${YELLOW}🔍 检查环境变量配置...${NC}"

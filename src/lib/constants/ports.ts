@@ -50,8 +50,8 @@ export function getExternalUrl(path: string = ''): string {
 
 // 获取 Sandbox URL
 export function getSandboxUrl(port?: number): string {
-    // 使用外部访问地址，通过外部Nginx代理
-    const url = getExternalUrl('/sandbox');
+    // 直接使用环境变量中配置的固定地址
+    const url = process.env.SANDBOX_PREVIEW_URL || 'http://115.190.100.24/sandbox/';
 
     // 添加调试日志
     console.log('🔍 getSandboxUrl调试:', {
@@ -60,11 +60,9 @@ export function getSandboxUrl(port?: number): string {
         windowHost: typeof window !== 'undefined' ? window.location.host : 'N/A',
         generatedUrl: url,
         env: {
+            SANDBOX_PREVIEW_URL: process.env.SANDBOX_PREVIEW_URL,
             SERVER_HOST: process.env.SERVER_HOST,
-            NEXT_PUBLIC_SERVER_HOST: process.env.NEXT_PUBLIC_SERVER_HOST,
-            EXTERNAL_DOMAIN: process.env.EXTERNAL_DOMAIN,
-            EXTERNAL_PROTOCOL: process.env.EXTERNAL_PROTOCOL,
-            EXTERNAL_PORT: process.env.EXTERNAL_PORT
+            NEXT_PUBLIC_SERVER_HOST: process.env.NEXT_PUBLIC_SERVER_HOST
         }
     });
 
