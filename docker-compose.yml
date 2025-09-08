@@ -6,7 +6,7 @@ services:
     container_name: v0-sandbox-app
     ports:
       - "3000:3000"
-      - "3101:3101"
+      - "3100-3199:3100-3199"
     env_file:
       - .env.local
     environment:
@@ -16,6 +16,8 @@ services:
       - DIFY_API_ENDPOINT=${DIFY_API_ENDPOINT:-http://152.136.41.186:32422/v1/workflows/run}
       - COMPONENT_DIFY_API_KEY=${COMPONENT_DIFY_API_KEY:-app-p363bFgzxF8m9J1eyl5wasBT}
       - REQUIRMENT_DIFY_API_KEY=${REQUIRMENT_DIFY_API_KEY:-app-YgkdhmiPidrzl8e1bbaIdNrb}
+      - SERVER_HOST=${SERVER_HOST:-115.190.100.24}
+      - NEXT_PUBLIC_SERVER_HOST=${NEXT_PUBLIC_SERVER_HOST:-115.190.100.24}
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}

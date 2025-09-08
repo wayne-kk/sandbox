@@ -15,16 +15,41 @@ export const PORTS = {
     PREVIEW: 3100,
 } as const;
 
+// 获取服务器地址
+export function getServerHost(): string {
+    // 优先使用环境变量
+    if (process.env.SERVER_HOST) {
+        return process.env.SERVER_HOST;
+    }
+
+    // 在服务器端，尝试获取公网IP
+    if (typeof window === 'undefined') {
+        // 服务器端逻辑
+        return process.env.NEXT_PUBLIC_SERVER_HOST || 'localhost';
+    }
+
+    // 客户端逻辑
+    return window.location.hostname;
+}
+
 // 获取 Sandbox URL
 export function getSandboxUrl(port?: number): string {
-    const actualPort = port || PORTS.SANDBOX_DEFAULT;
-    return `http://localhost:${actualPort}`;
+    // 使用Nginx代理，不需要端口号
+    const host = getServerHost();
+    // 检查是否在客户端环境
+    if (typeof window !== 'undefined') {
+        // 客户端：使用当前域名和端口
+        return `${window.location.protocol}//${window.location.host}/sandbox`;
+    }
+    // 服务器端：使用配置的host和默认端口8080
+    return `http://${host}:8080/sandbox`;
 }
 
 // 获取主应用 URL
 export function getMainAppUrl(port?: number): string {
     const actualPort = port || PORTS.MAIN_APP;
-    return `http://localhost:${actualPort}`;
+    const host = getServerHost();
+    return `http://${host}:${actualPort}`;
 }
 
 // 检查端口是否可用

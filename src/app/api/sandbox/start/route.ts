@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { PORTS, findRunningSandboxPort, findAvailableSandboxPort } from '@/lib/constants/ports';
+import { PORTS, findRunningSandboxPort, findAvailableSandboxPort, getSandboxUrl } from '@/lib/constants/ports';
 
 const execAsync = promisify(exec);
 
@@ -32,7 +32,7 @@ export async function POST() {
                 success: true,
                 message: `Sandbox 服务器已在运行`,
                 port: runningPort,
-                url: `http://localhost:${runningPort}`
+                url: getSandboxUrl(runningPort)
             });
         }
 
@@ -59,7 +59,7 @@ export async function POST() {
             success: true,
             message: 'Sandbox 服务器启动中...',
             port: PORTS.SANDBOX_DEFAULT, // sandbox项目配置的端口
-            url: `http://localhost:${PORTS.SANDBOX_DEFAULT}`
+            url: getSandboxUrl(PORTS.SANDBOX_DEFAULT)
         });
 
     } catch (error) {
@@ -81,7 +81,7 @@ export async function GET() {
                 success: true,
                 running: true,
                 port: runningPort,
-                url: `http://localhost:${runningPort}`,
+                url: getSandboxUrl(runningPort),
                 message: `Sandbox 服务器正在运行 (端口 ${runningPort})`
             });
         }

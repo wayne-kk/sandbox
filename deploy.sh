@@ -16,6 +16,19 @@ fi
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+
+# 检查Sandbox端口的函数
+check_sandbox_ports() {
+    echo -e "${YELLOW}🔍 检查Sandbox项目端口...${NC}"
+    for port in {3100..3199}; do
+        if curl -f http://localhost:$port >/dev/null 2>&1; then
+            echo -e "${GREEN}✅ Sandbox项目运行在端口 $port${NC}"
+            return 0
+        fi
+    done
+    echo -e "${YELLOW}⚠️  Sandbox项目尚未启动，但主应用正常${NC}"
+    return 1
+}
 NC='\033[0m'
 
 # 检查 Docker 是否运行
@@ -186,16 +199,28 @@ if lsof -i :3000 >/dev/null 2>&1; then
     docker ps --format "table {{.Names}}\t{{.Ports}}" | grep ":3000->" | awk '{print $1}' | xargs -r docker stop 2>/dev/null || true
 fi
 
-# 检查3101端口占用
-if lsof -i :3101 >/dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  端口3101被占用，正在清理...${NC}"
-    # 尝试停止占用3101端口的容器
-    docker ps --format "table {{.Names}}\t{{.Ports}}" | grep ":3101->" | awk '{print $1}' | xargs -r docker stop 2>/dev/null || true
-fi
+# 检查Sandbox端口范围占用 (3100-3199)
+echo -e "${YELLOW}🔍 检查Sandbox端口范围 (3100-3199)...${NC}"
+for port in {3100..3199}; do
+    if lsof -i :$port >/dev/null 2>&1; then
+        echo -e "${YELLOW}⚠️  端口$port被占用，正在清理...${NC}"
+        # 尝试停止占用该端口的容器
+        docker ps --format "table {{.Names}}\t{{.Ports}}" | grep ":$port->" | awk '{print $1}' | xargs -r docker stop 2>/dev/null || true
+    fi
+done
 echo -e "${YELLOW}🧹 清理旧容器...${NC}"
 docker compose down --remove-orphans 2>/dev/null || true
 
-# 5. 检查环境变量文件
+# 5. 设置服务器IP地址
+echo -e "${YELLOW}🔍 设置服务器IP地址...${NC}"
+SERVER_IP="115.190.100.24"
+echo -e "${GREEN}✅ 使用服务器公网IP: $SERVER_IP${NC}"
+# 设置环境变量
+export SERVER_HOST="$SERVER_IP"
+export NEXT_PUBLIC_SERVER_HOST="$SERVER_IP"
+echo -e "${YELLOW}💡 已设置 SERVER_HOST=$SERVER_IP${NC}"
+
+# 6. 检查环境变量文件
 echo -e "${YELLOW}🔍 检查环境变量配置...${NC}"
 if [ -f .env.local ]; then
     echo -e "${GREEN}✅ 找到 .env.local 文件${NC}"
@@ -248,7 +273,7 @@ echo -e "${YELLOW}🔍 检查服务状态...${NC}"
 if docker compose ps | grep -q "Up"; then
     echo -e "${GREEN}✅ 服务启动成功！${NC}"
     echo -e "${GREEN}🌐 主应用访问地址: http://localhost:3000${NC}"
-    echo -e "${GREEN}🌐 Sandbox项目访问地址: http://localhost:3101${NC}"
+    echo -e "${GREEN}🌐 Sandbox项目访问地址: http://localhost:3100-3199 (动态分配)${NC}"
     echo -e "${GREEN}🌐 Nginx 访问地址: http://localhost:8080${NC}"
 else
     echo -e "${RED}❌ 服务启动失败${NC}"
@@ -294,41 +319,39 @@ if ! netstat -tlnp 2>/dev/null | grep -q ":3000" && ! ss -tlnp 2>/dev/null | gre
     echo -e "${YELLOW}⚠️  端口3000未监听，等待应用启动...${NC}"
 fi
 
-if ! netstat -tlnp 2>/dev/null | grep -q ":3101" && ! ss -tlnp 2>/dev/null | grep -q ":3101"; then
-    echo -e "${YELLOW}⚠️  端口3101未监听，等待Sandbox项目启动...${NC}"
+# 检查Sandbox端口范围是否监听
+sandbox_ports_listening=false
+for port in {3100..3199}; do
+    if netstat -tlnp 2>/dev/null | grep -q ":$port" || ss -tlnp 2>/dev/null | grep -q ":$port"; then
+        echo -e "${GREEN}✅ 发现Sandbox项目运行在端口 $port${NC}"
+        sandbox_ports_listening=true
+        break
+    fi
+done
+
+if [ "$sandbox_ports_listening" = false ]; then
+    echo -e "${YELLOW}⚠️  Sandbox端口范围(3100-3199)未监听，等待Sandbox项目启动...${NC}"
 fi
 
 # 执行健康检查
 for i in {1..30}; do
     echo -e "${YELLOW}🔄 健康检查尝试 $i/30...${NC}"
     
-    # 尝试多种方式检查
+    # 尝试多种方式检查主应用
     if curl -f http://localhost:3000/api/health >/dev/null 2>&1; then
         echo -e "${GREEN}✅ 主应用健康检查通过！${NC}"
         # 检查Sandbox项目是否也启动
-        if curl -f http://localhost:3101 >/dev/null 2>&1; then
-            echo -e "${GREEN}✅ Sandbox项目也启动成功！${NC}"
-        else
-            echo -e "${YELLOW}⚠️  Sandbox项目尚未启动，但主应用正常${NC}"
-        fi
+        check_sandbox_ports
         break
     elif curl -f http://localhost:3000 >/dev/null 2>&1; then
         echo -e "${GREEN}✅ 主应用响应正常（健康检查端点可能不存在）${NC}"
         # 检查Sandbox项目
-        if curl -f http://localhost:3101 >/dev/null 2>&1; then
-            echo -e "${GREEN}✅ Sandbox项目也启动成功！${NC}"
-        else
-            echo -e "${YELLOW}⚠️  Sandbox项目尚未启动，但主应用正常${NC}"
-        fi
+        check_sandbox_ports
         break
     elif curl -s http://localhost:3000/api/health 2>/dev/null | grep -q "healthy"; then
         echo -e "${GREEN}✅ 主应用健康检查通过（返回503但服务正常）${NC}"
         # 检查Sandbox项目
-        if curl -f http://localhost:3101 >/dev/null 2>&1; then
-            echo -e "${GREEN}✅ Sandbox项目也启动成功！${NC}"
-        else
-            echo -e "${YELLOW}⚠️  Sandbox项目尚未启动，但主应用正常${NC}"
-        fi
+        check_sandbox_ports
         break
     fi
     
@@ -359,20 +382,29 @@ echo -e "${GREEN}🎉 云服务器部署完成！${NC}"
 echo -e "${GREEN}📊 服务状态:${NC}"
 docker compose ps
 
+# 显示当前运行的Sandbox端口
+echo -e "${YELLOW}🔍 当前运行的Sandbox端口:${NC}"
+for port in {3100..3199}; do
+    if netstat -tlnp 2>/dev/null | grep -q ":$port" || ss -tlnp 2>/dev/null | grep -q ":$port"; then
+        echo -e "${GREEN}   ✅ 端口 $port 正在运行${NC}"
+    fi
+done
+
 echo -e "${YELLOW}💡 访问地址:${NC}"
 echo -e "${YELLOW}   - 主应用: http://localhost:3000${NC}"
-echo -e "${YELLOW}   - Sandbox项目: http://localhost:3101${NC}"
 echo -e "${YELLOW}   - 通过 Nginx: http://localhost:8080${NC}"
-echo -e "${YELLOW}   - 外网访问主应用: http://你的服务器IP:3000${NC}"
-echo -e "${YELLOW}   - 外网访问Sandbox: http://你的服务器IP:3101${NC}"
-echo -e "${YELLOW}   - 外网访问Nginx: http://你的服务器IP:8080${NC}"
+echo -e "${YELLOW}   - Sandbox项目: http://localhost:8080/sandbox${NC}"
+
+echo -e "${GREEN}   - 外网访问主应用: http://$SERVER_IP:3000${NC}"
+echo -e "${GREEN}   - 外网访问Nginx: http://$SERVER_IP:8080${NC}"
+echo -e "${GREEN}   - 外网访问Sandbox: http://$SERVER_IP:8080/sandbox${NC}"
 
 # 12. 显示防火墙配置提示
 echo -e "${YELLOW}🔒 防火墙配置提示:${NC}"
 echo -e "${YELLOW}   如果无法外网访问，请开放以下端口:${NC}"
 echo -e "${YELLOW}   sudo ufw allow 3000${NC}"
-echo -e "${YELLOW}   sudo ufw allow 3101${NC}"
-echo -e "${YELLOW}   sudo ufw allow 8080${NC}"
+echo -e "${YELLOW}   sudo ufw allow 8080  # Nginx代理端口（推荐）${NC}"
+echo -e "${YELLOW}   # 注意：Sandbox项目现在通过Nginx代理访问，无需开放3100-3199端口${NC}"
 
 # 13. 显示使用说明
 echo -e "${GREEN}📚 使用说明:${NC}"
