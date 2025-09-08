@@ -20,7 +20,7 @@ export default function AIPipelinePage() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   
   // 页面状态
-  const [activeTab, setActiveTab] = useState('pipeline');
+  const [activeTab, setActiveTab] = useState('templates');
   const [stats, setStats] = useState({
     totalPipelines: 0,
     activePipelines: 0,
@@ -31,6 +31,7 @@ export default function AIPipelinePage() {
 
   // 模板管理状态
   const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [selectedScene, setSelectedScene] = useState('');
@@ -186,6 +187,25 @@ export default function AIPipelinePage() {
     }
   };
 
+  // 处理模板选中
+  const handleSelectTemplate = (template: any) => {
+    setSelectedTemplate(template);
+    // 自动填充表单信息
+    setTemplateForm({
+      scene: template.scene_tag || selectedScene,
+      component_name: template.component_name || '',
+      stype_tag: template.stype_tag || '',
+      function_tag: template.function_tag || ''
+    });
+  };
+
+  // 清除选中的模板
+  const clearSelectedTemplate = () => {
+    setSelectedTemplate(null);
+    setTemplateForm({ scene: '', component_name: '', stype_tag: '', function_tag: '' });
+    setUploadFile(null);
+  };
+
   // 修改模板
   const modifyTemplate = async () => {
     if (!uploadFile) {
@@ -214,9 +234,8 @@ export default function AIPipelinePage() {
         if (templateForm.scene) {
           await createTemplateByScene(templateForm.scene);
         }
-        // 重置表单
-        setTemplateForm({ scene: '', component_name: '', stype_tag: '', function_tag: '' });
-        setUploadFile(null);
+        // 重置表单和选中状态
+        clearSelectedTemplate();
       } else {
         throw new Error(data.error || '修改模板失败');
       }
@@ -346,64 +365,6 @@ export default function AIPipelinePage() {
 
       {/* 主要内容区域 */}
       <main className="max-w-8xl mx-auto py-8 px-6">
-        {/* 统计信息卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-purple-600">总 Pipeline</p>
-                  <p className="text-2xl font-bold text-purple-900">{stats.totalPipelines}</p>
-                </div>
-                <div className="p-3 bg-purple-500 rounded-lg">
-                  <Workflow className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-600">成功构建</p>
-                  <p className="text-2xl font-bold text-green-900">{stats.successfulBuilds}</p>
-                </div>
-                <div className="p-3 bg-green-500 rounded-lg">
-                  <CheckCircle className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-600">活跃流水线</p>
-                  <p className="text-2xl font-bold text-blue-900">{stats.activePipelines}</p>
-                </div>
-                <div className="p-3 bg-blue-500 rounded-lg">
-                  <GitBranch className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-orange-600">系统状态</p>
-                  <p className="text-2xl font-bold text-orange-900">就绪</p>
-                </div>
-                <div className="p-3 bg-orange-500 rounded-lg">
-                  <Settings className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Pipeline 执行状态 */}
         {pipelineStatus.stage !== 'idle' && (
@@ -467,18 +428,7 @@ export default function AIPipelinePage() {
 
           <CardContent className="px-8 pb-8">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-8 h-14 bg-gray-100/50 p-1 rounded-xl">
-                <TabsTrigger 
-                  value="pipeline" 
-                  className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-purple-600 rounded-lg transition-all duration-200"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Workflow className="w-4 h-4" />
-                    </div>
-                    <span className="font-medium">🔄 Pipeline 配置</span>
-                  </div>
-                </TabsTrigger>
+              <TabsList className="grid w-full grid-cols-1 mb-8 h-14 bg-gray-100/50 p-1 rounded-xl">
                 <TabsTrigger 
                   value="templates" 
                   className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 rounded-lg transition-all duration-200"
@@ -490,67 +440,8 @@ export default function AIPipelinePage() {
                     <span className="font-medium">📦 模板管理</span>
                   </div>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="monitoring" 
-                  className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 rounded-lg transition-all duration-200"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <BarChart3 className="w-4 h-4" />
-                    </div>
-                    <span className="font-medium">📊 监控面板</span>
-                  </div>
-                </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="pipeline" className="space-y-6">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">Pipeline 配置与执行</h3>
-                  <p className="text-gray-600 max-w-2xl mx-auto">
-                    配置自动化构建流水线，包括代码分析、组件生成、测试执行和部署流程。
-                    支持自定义构建步骤和部署策略。
-                  </p>
-                </div>
-                
-                {/* Pipeline 配置表单 */}
-                <div className="bg-gray-50 rounded-xl p-6">
-                  <h4 className="text-lg font-semibold mb-4">快速启动 Pipeline</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">项目模板</label>
-                      <select className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                        <option>React + TypeScript</option>
-                        <option>Vue 3 + TypeScript</option>
-                        <option>Next.js 项目</option>
-                        <option>组件库模板</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">构建环境</label>
-                      <select className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                        <option>Node.js 18</option>
-                        <option>Node.js 20</option>
-                        <option>Bun 1.0</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-4">
-                    <Button 
-                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                      onClick={() => handleExecutePipeline({ template: 'react-ts', env: 'node18' })}
-                      disabled={pipelineStatus.stage !== 'idle' && pipelineStatus.stage !== 'completed'}
-                    >
-                      <Workflow className="w-4 h-4 mr-2" />
-                      执行 Pipeline
-                    </Button>
-                    <Button variant="outline">
-                      <Settings className="w-4 h-4 mr-2" />
-                      高级配置
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
               
               <TabsContent value="templates" className="space-y-6">
                 <div className="text-center mb-8">
@@ -560,181 +451,106 @@ export default function AIPipelinePage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* 创建和下载模板 */}
-                  <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Plus className="w-5 h-5 text-green-600" />
-                        场景模板生成
-                      </CardTitle>
-                      <CardDescription>
-                        输入场景描述，AI 自动生成对应的组件模板列表
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          场景描述 *
-                        </label>
-                        <input
-                          type="text"
-                          value={selectedScene}
-                          onChange={(e) => setSelectedScene(e.target.value)}
-                          placeholder="例如: 电商平台、后台管理系统、数据分析平台..."
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        />
-                      </div>
-                      
-                      <div className="flex gap-3">
-                        <Button
-                          onClick={() => createTemplateByScene(selectedScene)}
-                          disabled={!selectedScene.trim() || isCreatingTemplate}
-                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                        >
-                          {isCreatingTemplate ? (
-                            <>
-                              <Layers className="w-4 h-4 mr-2 animate-spin" />
-                              生成中...
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-4 h-4 mr-2" />
-                              生成模板
-                            </>
-                          )}
-                        </Button>
-                        
-                        <Button
-                          onClick={() => downloadTemplate(selectedScene)}
-                          disabled={!selectedScene.trim() || isDownloading}
-                          variant="outline"
-                          className="border-green-200 text-green-700 hover:bg-green-50"
-                        >
-                          {isDownloading ? (
-                            <>
-                              <Download className="w-4 h-4 mr-2 animate-bounce" />
-                              下载中...
-                            </>
-                          ) : (
-                            <>
-                              <Download className="w-4 h-4 mr-2" />
-                              下载
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* 修改模板 */}
-                  <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Edit3 className="w-5 h-5 text-blue-600" />
-                        模板修改上传
-                      </CardTitle>
-                      <CardDescription>
-                        上传自定义组件文件，修改现有模板的样式和功能
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            场景
-                          </label>
-                          <input
-                            type="text"
-                            value={templateForm.scene}
-                            onChange={(e) => setTemplateForm(prev => ({...prev, scene: e.target.value}))}
-                            placeholder="场景名称"
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            组件名称
-                          </label>
-                          <input
-                            type="text"
-                            value={templateForm.component_name}
-                            onChange={(e) => setTemplateForm(prev => ({...prev, component_name: e.target.value}))}
-                            placeholder="组件名称"
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            风格标签
-                          </label>
-                          <input
-                            type="text"
-                            value={templateForm.stype_tag}
-                            onChange={(e) => setTemplateForm(prev => ({...prev, stype_tag: e.target.value}))}
-                            placeholder="现代简约, 商务风格..."
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            功能标签
-                          </label>
-                          <input
-                            type="text"
-                            value={templateForm.function_tag}
-                            onChange={(e) => setTemplateForm(prev => ({...prev, function_tag: e.target.value}))}
-                            placeholder="交互性, 数据展示..."
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          模板文件
-                        </label>
-                        <input
-                          type="file"
-                          accept=".zip,.tsx,.ts,.jsx,.js"
-                          onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        />
-                      </div>
+                {/* 场景模板生成卡片 */}
+                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 mb-8">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Plus className="w-5 h-5 text-green-600" />
+                      场景模板生成
+                    </CardTitle>
+                    <CardDescription>
+                      输入场景描述，AI 自动生成对应的组件模板列表
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        场景描述 *
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedScene}
+                        onChange={(e) => setSelectedScene(e.target.value)}
+                        placeholder="例如: 电商平台、后台管理系统、数据分析平台..."
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => createTemplateByScene(selectedScene)}
+                        disabled={!selectedScene.trim() || isCreatingTemplate}
+                        className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                      >
+                        {isCreatingTemplate ? (
+                          <>
+                            <Layers className="w-4 h-4 mr-2 animate-spin" />
+                            生成中...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4 mr-2" />
+                            生成模板
+                          </>
+                        )}
+                      </Button>
                       
                       <Button
-                        onClick={modifyTemplate}
-                        disabled={!templateForm.scene || !templateForm.component_name || !uploadFile}
-                        className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                        onClick={() => downloadTemplate(selectedScene)}
+                        disabled={!selectedScene.trim() || isDownloading}
+                        variant="outline"
+                        className="border-green-200 text-green-700 hover:bg-green-50"
                       >
-                        <Upload className="w-4 h-4 mr-2" />
-                        上传修改
+                        {isDownloading ? (
+                          <>
+                            <Download className="w-4 h-4 mr-2 animate-bounce" />
+                            下载中...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4 mr-2" />
+                            下载
+                          </>
+                        )}
                       </Button>
-                    </CardContent>
-                  </Card>
-                </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* 生成的模板列表 */}
                 {templates.length > 0 && (
-                  <Card className="mt-8">
+                  <Card className="mb-8">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <FileText className="w-5 h-5" />
                         生成的模板列表
                       </CardTitle>
                       <CardDescription>
-                        当前场景生成的组件模板，点击可查看详细信息
+                        点击模板卡片选中并编辑模板，已选中的模板会显示蓝色边框
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {templates.map((template: any, index) => (
-                          <div key={template.id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div 
+                            key={template.id || index} 
+                            onClick={() => handleSelectTemplate(template)}
+                            className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                              selectedTemplate?.id === template.id
+                                ? 'border-blue-500 bg-blue-50 shadow-lg transform scale-105'
+                                : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                            }`}
+                          >
                             <div className="flex items-start justify-between mb-3">
                               <h4 className="font-semibold text-gray-900">{template.component_name}</h4>
-                              <Badge variant="outline" className="text-xs">
-                                {template.scene_tag}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {template.scene_tag}
+                                </Badge>
+                                {selectedTemplate?.id === template.id && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                )}
+                              </div>
                             </div>
                             
                             <p className="text-sm text-gray-600 mb-3 line-clamp-2">
@@ -755,6 +571,120 @@ export default function AIPipelinePage() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 条件显示的模板修改上传卡片 */}
+                {selectedTemplate && (
+                  <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 animate-in slide-in-from-bottom-2 duration-300">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Edit3 className="w-5 h-5 text-blue-600" />
+                          <CardTitle>模板修改上传</CardTitle>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={clearSelectedTemplate}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                      <CardDescription>
+                        正在编辑: <span className="font-semibold text-blue-600">{selectedTemplate.component_name}</span> - 上传自定义组件文件，修改模板的样式和功能
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            场景 <span className="text-gray-400">(自动填充)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={templateForm.scene}
+                            onChange={(e) => setTemplateForm(prev => ({...prev, scene: e.target.value}))}
+                            placeholder="场景名称"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-gray-50"
+                            readOnly
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            组件名称 <span className="text-gray-400">(自动填充)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={templateForm.component_name}
+                            onChange={(e) => setTemplateForm(prev => ({...prev, component_name: e.target.value}))}
+                            placeholder="组件名称"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-gray-50"
+                            readOnly
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            风格标签 <span className="text-green-600">(可修改)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={templateForm.stype_tag}
+                            onChange={(e) => setTemplateForm(prev => ({...prev, stype_tag: e.target.value}))}
+                            placeholder="现代简约, 商务风格..."
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            功能标签 <span className="text-green-600">(可修改)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={templateForm.function_tag}
+                            onChange={(e) => setTemplateForm(prev => ({...prev, function_tag: e.target.value}))}
+                            placeholder="交互性, 数据展示..."
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          模板文件 <span className="text-green-600">(支持 .zip, .tsx, .ts, .jsx, .js 文件)</span>
+                        </label>
+                        <input
+                          type="file"
+                          accept=".zip,.tsx,.ts,.jsx,.js"
+                          onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        />
+                        {uploadFile && (
+                          <div className="mt-2 text-xs text-gray-600">
+                            已选择文件: <span className="font-medium">{uploadFile.name}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={modifyTemplate}
+                          disabled={!templateForm.scene || !templateForm.component_name || !uploadFile}
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          上传修改
+                        </Button>
+                        <Button
+                          onClick={clearSelectedTemplate}
+                          variant="outline"
+                          className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                        >
+                          取消编辑
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
