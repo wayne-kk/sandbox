@@ -192,9 +192,12 @@ docker compose down --remove-orphans 2>/dev/null || true
 echo -e "${YELLOW}🔍 检查环境变量配置...${NC}"
 if [ -f .env.local ]; then
     echo -e "${GREEN}✅ 找到 .env.local 文件${NC}"
+    echo -e "${YELLOW}📋 文件路径: $(pwd)/.env.local${NC}"
+    
     # 检查关键环境变量
     if grep -q "DIFY_API_ENDPOINT" .env.local; then
-        echo -e "${GREEN}✅ DIFY_API_ENDPOINT 已配置${NC}"
+        DIFY_ENDPOINT=$(grep "DIFY_API_ENDPOINT" .env.local | cut -d'=' -f2)
+        echo -e "${GREEN}✅ DIFY_API_ENDPOINT 已配置: $DIFY_ENDPOINT${NC}"
     else
         echo -e "${YELLOW}⚠️  DIFY_API_ENDPOINT 未在 .env.local 中找到${NC}"
     fi
@@ -204,9 +207,13 @@ if [ -f .env.local ]; then
     else
         echo -e "${YELLOW}⚠️  COMPONENT_DIFY_API_KEY 未在 .env.local 中找到${NC}"
     fi
+    
+    # 显示文件权限
+    echo -e "${YELLOW}📋 文件权限: $(ls -la .env.local | awk '{print $1}')${NC}"
 else
     echo -e "${RED}❌ 未找到 .env.local 文件${NC}"
     echo -e "${YELLOW}💡 请创建 .env.local 文件并配置必要的环境变量${NC}"
+    echo -e "${YELLOW}💡 当前目录: $(pwd)${NC}"
 fi
 
 # 6. 创建必要目录
@@ -234,7 +241,24 @@ else
     exit 1
 fi
 
-# 10. 健康检查
+# 10. 检查容器内环境变量
+echo -e "${YELLOW}🔍 检查容器内环境变量...${NC}"
+sleep 5  # 等待容器完全启动
+
+if docker exec v0-sandbox-app printenv DIFY_API_ENDPOINT >/dev/null 2>&1; then
+    DIFY_ENV=$(docker exec v0-sandbox-app printenv DIFY_API_ENDPOINT)
+    echo -e "${GREEN}✅ 容器内 DIFY_API_ENDPOINT: $DIFY_ENV${NC}"
+else
+    echo -e "${RED}❌ 容器内未找到 DIFY_API_ENDPOINT 环境变量${NC}"
+fi
+
+if docker exec v0-sandbox-app printenv COMPONENT_DIFY_API_KEY >/dev/null 2>&1; then
+    echo -e "${GREEN}✅ 容器内 COMPONENT_DIFY_API_KEY 已设置${NC}"
+else
+    echo -e "${RED}❌ 容器内未找到 COMPONENT_DIFY_API_KEY 环境变量${NC}"
+fi
+
+# 11. 健康检查
 echo -e "${YELLOW}🏥 执行健康检查...${NC}"
 for i in {1..30}; do
     if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
@@ -259,13 +283,13 @@ echo -e "${YELLOW}   - 直接访问应用: http://localhost:3000${NC}"
 echo -e "${YELLOW}   - 通过 Nginx: http://localhost:8080${NC}"
 echo -e "${YELLOW}   - 外网访问: http://你的服务器IP:8080${NC}"
 
-# 11. 显示防火墙配置提示
+# 12. 显示防火墙配置提示
 echo -e "${YELLOW}🔒 防火墙配置提示:${NC}"
 echo -e "${YELLOW}   如果无法外网访问，请开放以下端口:${NC}"
 echo -e "${YELLOW}   sudo ufw allow 8080${NC}"
 echo -e "${YELLOW}   sudo ufw allow 3000${NC}"
 
-# 12. 显示使用说明
+# 13. 显示使用说明
 echo -e "${GREEN}📚 使用说明:${NC}"
 echo -e "${GREEN}   - 完整部署: ./deploy.sh${NC}"
 echo -e "${GREEN}   - 快速启动: ./deploy.sh --quick 或 ./deploy.sh -q${NC}"
