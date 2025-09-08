@@ -211,14 +211,27 @@ done
 echo -e "${YELLOW}🧹 清理旧容器...${NC}"
 docker compose down --remove-orphans 2>/dev/null || true
 
-# 5. 设置服务器IP地址
-echo -e "${YELLOW}🔍 设置服务器IP地址...${NC}"
+# 5. 设置服务器地址和外部Nginx配置
+echo -e "${YELLOW}🔍 设置服务器地址和外部Nginx配置...${NC}"
 SERVER_IP="115.190.100.24"
+EXTERNAL_DOMAIN="wayne.beer"
+EXTERNAL_PROTOCOL="https"
+
 echo -e "${GREEN}✅ 使用服务器公网IP: $SERVER_IP${NC}"
+echo -e "${GREEN}✅ 使用外部域名: $EXTERNAL_DOMAIN${NC}"
+echo -e "${GREEN}✅ 使用外部协议: $EXTERNAL_PROTOCOL${NC}"
+
 # 设置环境变量
 export SERVER_HOST="$SERVER_IP"
 export NEXT_PUBLIC_SERVER_HOST="$SERVER_IP"
-echo -e "${YELLOW}💡 已设置 SERVER_HOST=$SERVER_IP${NC}"
+export EXTERNAL_DOMAIN="$EXTERNAL_DOMAIN"
+export EXTERNAL_PROTOCOL="$EXTERNAL_PROTOCOL"
+export EXTERNAL_PORT=""
+
+echo -e "${YELLOW}💡 已设置环境变量:${NC}"
+echo -e "${YELLOW}   SERVER_HOST=$SERVER_IP${NC}"
+echo -e "${YELLOW}   EXTERNAL_DOMAIN=$EXTERNAL_DOMAIN${NC}"
+echo -e "${YELLOW}   EXTERNAL_PROTOCOL=$EXTERNAL_PROTOCOL${NC}"
 
 # 6. 检查环境变量文件
 echo -e "${YELLOW}🔍 检查环境变量配置...${NC}"
@@ -392,12 +405,14 @@ done
 
 echo -e "${YELLOW}💡 访问地址:${NC}"
 echo -e "${YELLOW}   - 主应用: http://localhost:3000${NC}"
-echo -e "${YELLOW}   - 通过 Nginx: http://localhost:8080${NC}"
+echo -e "${YELLOW}   - 通过内部Nginx: http://localhost:8080${NC}"
 echo -e "${YELLOW}   - Sandbox项目: http://localhost:8080/sandbox${NC}"
 
 echo -e "${GREEN}   - 外网访问主应用: http://$SERVER_IP:3000${NC}"
-echo -e "${GREEN}   - 外网访问Nginx: http://$SERVER_IP:8080${NC}"
+echo -e "${GREEN}   - 外网访问内部Nginx: http://$SERVER_IP:8080${NC}"
 echo -e "${GREEN}   - 外网访问Sandbox: http://$SERVER_IP:8080/sandbox${NC}"
+echo -e "${BLUE}   - 外部Nginx访问: $EXTERNAL_PROTOCOL://$EXTERNAL_DOMAIN${NC}"
+echo -e "${BLUE}   - 外部Nginx Sandbox: $EXTERNAL_PROTOCOL://$EXTERNAL_DOMAIN/sandbox${NC}"
 
 # 12. 显示防火墙配置提示
 echo -e "${YELLOW}🔒 防火墙配置提示:${NC}"

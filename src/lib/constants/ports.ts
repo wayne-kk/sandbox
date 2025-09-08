@@ -32,16 +32,43 @@ export function getServerHost(): string {
     return window.location.hostname;
 }
 
-// 获取 Sandbox URL
-export function getSandboxUrl(port?: number): string {
-    const host = getServerHost();
+// 获取外部访问地址（考虑外部Nginx）
+export function getExternalUrl(path: string = ''): string {
     // 检查是否在客户端环境
     if (typeof window !== 'undefined') {
-        // 客户端：使用当前域名和端口，通过Nginx代理
-        return `${window.location.protocol}//${window.location.host}/sandbox`;
+        // 客户端：使用当前域名和协议
+        return `${window.location.protocol}//${window.location.host}${path}`;
     }
-    // 服务器端：使用配置的host和默认端口8080，通过Nginx代理
-    return `http://${host}:8080/sandbox`;
+
+    // 服务器端：使用配置的域名
+    const domain = process.env.EXTERNAL_DOMAIN || process.env.SERVER_HOST || 'localhost';
+    const protocol = process.env.EXTERNAL_PROTOCOL || 'http';
+    const port = process.env.EXTERNAL_PORT || '';
+
+    return `${protocol}://${domain}${port ? ':' + port : ''}${path}`;
+}
+
+// 获取 Sandbox URL
+export function getSandboxUrl(port?: number): string {
+    // 使用外部访问地址，通过外部Nginx代理
+    const url = getExternalUrl('/sandbox');
+
+    // 添加调试日志
+    console.log('🔍 getSandboxUrl调试:', {
+        port,
+        isClient: typeof window !== 'undefined',
+        windowHost: typeof window !== 'undefined' ? window.location.host : 'N/A',
+        generatedUrl: url,
+        env: {
+            SERVER_HOST: process.env.SERVER_HOST,
+            NEXT_PUBLIC_SERVER_HOST: process.env.NEXT_PUBLIC_SERVER_HOST,
+            EXTERNAL_DOMAIN: process.env.EXTERNAL_DOMAIN,
+            EXTERNAL_PROTOCOL: process.env.EXTERNAL_PROTOCOL,
+            EXTERNAL_PORT: process.env.EXTERNAL_PORT
+        }
+    });
+
+    return url;
 }
 
 // 获取主应用 URL
