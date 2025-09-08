@@ -301,12 +301,24 @@ sleep 20
 
 # 8.1 网络连接测试
 echo -e "${YELLOW}🔍 测试网络连接...${NC}"
-if curl -s --connect-timeout 10 --max-time 30 -I http://152.136.41.186:32422/v1/workflows/run > /dev/null 2>&1; then
-    echo -e "${GREEN}   ✅ Dify API 连接正常${NC}"
+
+# 检查是否有代理设置
+if [[ -n "$http_proxy" || -n "$https_proxy" || -n "$HTTP_PROXY" || -n "$HTTPS_PROXY" ]]; then
+    echo -e "${YELLOW}   ⚠️  检测到代理设置，可能影响连接${NC}"
+    echo -e "${YELLOW}   http_proxy: ${http_proxy:-$HTTP_PROXY}${NC}"
+    echo -e "${YELLOW}   https_proxy: ${https_proxy:-$HTTPS_PROXY}${NC}"
+fi
+
+# 测试连接（禁用代理）
+if curl -s --connect-timeout 10 --max-time 30 --noproxy "*" -I http://152.136.41.186:32422/v1/workflows/run > /dev/null 2>&1; then
+    echo -e "${GREEN}   ✅ Dify API 连接正常（直接连接）${NC}"
+elif curl -s --connect-timeout 10 --max-time 30 -I http://152.136.41.186:32422/v1/workflows/run > /dev/null 2>&1; then
+    echo -e "${GREEN}   ✅ Dify API 连接正常（通过代理）${NC}"
 else
     echo -e "${RED}   ❌ Dify API 连接失败${NC}"
     echo -e "${YELLOW}   💡 运行 ./fix-network-issues.sh 修复网络问题${NC}"
     echo -e "${YELLOW}   💡 或运行 ./diagnose-network.sh 获取详细诊断信息${NC}"
+    echo -e "${YELLOW}   💡 如果使用代理，请检查代理配置${NC}"
 fi
 
 # 9. 检查服务状态

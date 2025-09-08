@@ -38,6 +38,13 @@ services:
       - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME:-}
       - AZURE_OPENAI_CHAT_DEPLOYMENT_NAME=${AZURE_OPENAI_CHAT_DEPLOYMENT_NAME:-}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      # 禁用代理，确保直接连接
+      - http_proxy=
+      - https_proxy=
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - no_proxy=152.136.41.186
+      - NO_PROXY=152.136.41.186
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
