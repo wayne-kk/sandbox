@@ -1,15 +1,11 @@
-# 生产环境 Dockerfile - 中国镜像源优化版
-FROM registry.cn-hangzhou.aliyuncs.com/library/node:18-alpine AS base
-
-# 配置 Alpine 镜像源
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+# 生产环境 Dockerfile - 官方镜像源版
+FROM node:18-alpine AS base
 
 # 安装必要的系统依赖
 RUN apk add --no-cache libc6-compat curl
 WORKDIR /app
 
-# 配置 npm 镜像源
-RUN npm config set registry https://registry.npmmirror.com
+# 使用官方 npm 源
 
 # 安装依赖阶段
 FROM base AS deps
