@@ -29,8 +29,8 @@ fi
 cat > .env.local << EOF
 SERVER_HOST=$SERVER_IP
 NEXT_PUBLIC_SERVER_HOST=$SERVER_IP
-SANDBOX_PREVIEW_URL=http://$SERVER_IP/sandbox/
-NEXT_PUBLIC_SANDBOX_PREVIEW_URL=http://$SERVER_IP/sandbox/
+SANDBOX_PREVIEW_URL=http://$SERVER_IP:8080/sandbox/
+NEXT_PUBLIC_SANDBOX_PREVIEW_URL=http://$SERVER_IP:8080/sandbox/
 DATABASE_URL=file:./data/prod.db
 DIFY_API_KEY=
 DIFY_API_ENDPOINT=http://152.136.41.186:32422/v1/workflows/run
@@ -84,11 +84,23 @@ fi
 
 echo ""
 echo "🎉 部署完成！"
-echo "访问地址:"
-echo "  - 主应用: http://$SERVER_IP:8080"
-echo "  - Sandbox: http://$SERVER_IP:8080/sandbox"
 echo ""
-echo "管理命令:"
+echo "📱 访问地址:"
+echo "  - 主应用: http://$SERVER_IP:8080"
+echo "  - Sandbox 实时预览: http://$SERVER_IP:8080/sandbox"
+echo "  - API 健康检查: http://$SERVER_IP:8080/api/health"
+echo ""
+echo "🔧 管理命令:"
 echo "  - 查看日志: docker compose logs -f"
 echo "  - 停止服务: docker compose down"
 echo "  - 重启服务: docker compose restart"
+echo ""
+echo "🎯 Sandbox 实时预览功能:"
+echo "  - 支持在线代码编辑和实时预览"
+echo "  - 自动热重载，代码修改立即生效"
+echo "  - 支持多个并发项目 (端口 3100-3110)"
+echo ""
+echo "⚠️  重要提醒:"
+echo "  - 确保云服务商安全组已开放端口 8080, 3100-3110"
+echo "  - Sandbox 需要在线运行以支持实时预览"
+echo "  - 首次启动可能需要安装依赖，请耐心等待"
