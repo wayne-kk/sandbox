@@ -59,7 +59,7 @@ docker system prune -f 2>/dev/null || true
 
 # 构建并启动
 echo "构建应用..."
-docker compose build
+docker compose build --no-cache
 
 echo "启动服务..."
 docker compose up -d

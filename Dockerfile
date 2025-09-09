@@ -40,12 +40,12 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# 构建生产版本
+RUN npm run build
+
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000/api/health || exit 1
-
-# 构建生产版本
-RUN npm run build
 
 # 启动生产服务器
 CMD ["npm", "start"]
