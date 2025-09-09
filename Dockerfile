@@ -10,21 +10,31 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# 设置npm配置 - 优化安装速度
+# 设置npm配置 - 优化安装速度和稳定性
 RUN npm config set registry https://registry.npmmirror.com/ && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
-    npm config set fetch-retries 3
+    npm config set fetch-retries 5 && \
+    npm config set timeout 300000 && \
+    npm config set maxsockets 15
 
 # 依赖安装阶段
 FROM base AS deps
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production --silent && npm cache clean --force
+# 使用重试机制安装生产依赖
+RUN for i in 1 2 3; do \
+        npm ci --only=production --silent --prefer-offline --no-audit --no-fund && break || \
+        (echo "Attempt $i failed, retrying..." && sleep 5); \
+    done && npm cache clean --force
 
 # 开发依赖阶段
 FROM base AS dev-deps
 COPY package.json package-lock.json* ./
-RUN npm ci --silent && npm cache clean --force
+# 使用重试机制安装依赖
+RUN for i in 1 2 3; do \
+        npm ci --silent --prefer-offline --no-audit --no-fund && break || \
+        (echo "Attempt $i failed, retrying..." && sleep 5); \
+    done && npm cache clean --force
 
 # 构建阶段
 FROM base AS builder
