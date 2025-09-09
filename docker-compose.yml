@@ -76,7 +76,7 @@ services:
       - PORT=3100
       - HOSTNAME=0.0.0.0
     volumes:
-      - ./sandbox:/app/sandbox
+      - ./sandbox:/app/sandbox:rw
     restart: unless-stopped
     networks:
       - v0-sandbox-network

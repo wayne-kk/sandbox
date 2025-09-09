@@ -85,7 +85,15 @@ ENV NODE_ENV=development
 ENV PORT=3100
 ENV HOSTNAME="0.0.0.0"
 
+# 创建非root用户并设置权限
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# 设置权限
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
 RUN npx prisma generate || true
 
 EXPOSE 3100
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]
