@@ -20,10 +20,16 @@ RUN npm config set registry https://registry.npmmirror.com/ && \
 # 安装 pnpm
 RUN npm install -g pnpm
 
+# 设置 pnpm 缓存目录
+ENV PNPM_CACHE_DIR=/app/.cache/pnpm
+RUN mkdir -p /app/.cache/pnpm
+
 # 安装依赖
 COPY package.json pnpm-lock.yaml* ./
 RUN for i in 1 2 3; do \
-        pnpm install --frozen-lockfile && break || \
+        pnpm config set store-dir /app/.cache/pnpm/store && \
+        pnpm config set cache-dir /app/.cache/pnpm/cache && \
+        pnpm install --frozen-lockfile --prefer-offline && break || \
         (echo "Attempt $i failed, retrying..." && sleep 5); \
     done
 
@@ -58,7 +64,10 @@ COPY --from=base /app/prisma ./prisma
 
 # 安装生产依赖
 COPY package.json pnpm-lock.yaml* ./
-RUN npm install -g pnpm && pnpm install --prod --frozen-lockfile
+RUN npm install -g pnpm && \
+    pnpm config set store-dir /app/.cache/pnpm/store && \
+    pnpm config set cache-dir /app/.cache/pnpm/cache && \
+    pnpm install --prod --frozen-lockfile --prefer-offline
 
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app
 

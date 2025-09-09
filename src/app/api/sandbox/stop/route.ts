@@ -13,7 +13,7 @@ export async function POST(request: Request) {
             // 杀死所有 Next.js 进程
             "pkill -f 'next dev'",
             // 杀死所有 npm 进程
-            "pkill -f 'npm run dev'"
+            "pkill -f 'pnpm run dev'"
         ];
 
         let output = "正在停止项目...\n";

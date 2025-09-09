@@ -35,7 +35,7 @@ export async function POST() {
 
         // 执行 npm install
         console.log('🔄 开始安装依赖...');
-        const { stdout: installOutput, stderr: installError } = await execAsync('cd sandbox && npm install --silent', {
+        const { stdout: installOutput, stderr: installError } = await execAsync('cd sandbox && npm install -g pnpm && pnpm install --silent', {
             timeout: 180000 // 3分钟超时
         });
 

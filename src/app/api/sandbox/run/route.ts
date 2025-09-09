@@ -75,7 +75,7 @@ export async function POST(request: Request) {
 
                 // 在容器中安装依赖
                 console.log('📦 在Docker容器中安装依赖...');
-                const installResult = await dockerManager.execInContainer('npm install --silent');
+                const installResult = await dockerManager.execInContainer('npm install -g pnpm && pnpm install --silent');
 
                 if (installResult.exitCode !== 0) {
                     console.error('Docker容器中依赖安装失败:', installResult.stderr);
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 
                 // 启动开发服务器
                 console.log('🚀 在Docker容器中启动开发服务器...');
-                const devResult = await dockerManager.execInContainer('npm run dev &');
+                const devResult = await dockerManager.execInContainer('pnpm run dev &');
 
                 if (devResult.exitCode !== 0) {
                     console.error('Docker容器中启动开发服务器失败:', devResult.stderr);
@@ -101,14 +101,14 @@ export async function POST(request: Request) {
             } catch (dockerError: any) {
                 console.error("Docker运行失败，切换到本地运行:", dockerError);
                 // Docker失败，切换到本地运行
-                command = `cd "${sandboxDir}" && npm install --silent`;
+                command = `cd "${sandboxDir}" && npm install -g pnpm && pnpm install --silent`;
             }
         } else {
             // 本地运行
             if (type === "nextjs") {
-                command = `cd "${sandboxDir}" && npm install --silent`;
+                command = `cd "${sandboxDir}" && npm install -g pnpm && pnpm install --silent`;
             } else if (type === "react") {
-                command = `cd "${sandboxDir}" && npm install --silent`;
+                command = `cd "${sandboxDir}" && npm install -g pnpm && pnpm install --silent`;
             }
         }
 

@@ -354,21 +354,21 @@ CMD ["tail", "-f", "/dev/null"]
      * 启动项目开发服务器
      */
     async startDevServer(): Promise<ExecResult> {
-        return this.execInContainer('npm run dev');
+        return this.execInContainer('pnpm run dev');
     }
 
     /**
      * 安装依赖
      */
     async installDependencies(): Promise<ExecResult> {
-        return this.execInContainer('npm install');
+        return this.execInContainer('npm install -g pnpm && pnpm install');
     }
 
     /**
      * 构建项目
      */
     async buildProject(): Promise<ExecResult> {
-        return this.execInContainer('npm run build');
+        return this.execInContainer('pnpm run build');
     }
 
     /**
@@ -423,7 +423,7 @@ CMD ["tail", "-f", "/dev/null"]
 export const DEFAULT_CONFIGS = {
     nextjs: {
         image: "node:22",
-        command: 'bash -c "npm install --silent && npm run dev"',
+        command: 'bash -c "npm install -g pnpm && pnpm install --silent && pnpm run dev"',
         ports: ["3001:3001"],
         environment: {
             NODE_ENV: "development"
@@ -431,7 +431,7 @@ export const DEFAULT_CONFIGS = {
     },
     react: {
         image: "node:22",
-        command: 'bash -c "npm install --silent && npm start"',
+        command: 'bash -c "npm install -g pnpm && pnpm install --silent && pnpm start"',
         ports: ["3001:3000"],
         environment: {
             NODE_ENV: "development"

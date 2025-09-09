@@ -60,7 +60,7 @@ export default function Terminal() {
     try {
       const response = await fetch('/api/sandbox/container');
       const data = await response.json();
-      
+
       if (data.success) {
         setContainerStatus({
           isRunning: data.isRunning,
@@ -77,7 +77,7 @@ export default function Terminal() {
     try {
       const response = await fetch('/api/sandbox/exec');
       const data = await response.json();
-      
+
       if (data.success) {
         setCommonCommands(data.commands);
       }
@@ -89,16 +89,16 @@ export default function Terminal() {
   const createContainer = async () => {
     setIsLoading(true);
     addOutput('system', '正在创建容器...');
-    
+
     try {
       const response = await fetch('/api/sandbox/container', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'create' })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         addOutput('system', `容器创建成功: ${data.containerId}`);
         await checkContainerStatus();
@@ -115,16 +115,16 @@ export default function Terminal() {
   const stopContainer = async () => {
     setIsLoading(true);
     addOutput('system', '正在停止容器...');
-    
+
     try {
       const response = await fetch('/api/sandbox/container', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'stop' })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         addOutput('system', '容器已停止');
         await checkContainerStatus();
@@ -141,16 +141,16 @@ export default function Terminal() {
   const initializeProject = async () => {
     setIsLoading(true);
     addOutput('system', `正在初始化 ${projectType === 'nextjs' ? 'Next.js' : 'React'} 项目...`);
-    
+
     try {
       const response = await fetch('/api/sandbox/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: projectType })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         addOutput('system', data.message);
       } else {
@@ -173,7 +173,7 @@ export default function Terminal() {
 
     try {
       // 对于长时间运行的命令使用流式输出
-      const isLongRunning = ['npm install', 'npm run dev', 'npm run build'].some(c => 
+      const isLongRunning = ['pnpm install', 'pnpm run dev', 'pnpm run build'].some(c =>
         commandToRun.includes(c)
       );
 
@@ -261,14 +261,13 @@ export default function Terminal() {
       <div className="flex items-center justify-between p-4 border-b border-gray-700">
         <div className="flex items-center space-x-4">
           <h3 className="text-lg font-semibold">🐚 终端</h3>
-          
+
           {/* 容器状态指示器 */}
           <div className="flex items-center space-x-2">
-            <div className={`w-2 h-2 rounded-full ${
-              containerStatus.dockerAvailable
+            <div className={`w-2 h-2 rounded-full ${containerStatus.dockerAvailable
                 ? containerStatus.isRunning ? 'bg-green-500' : 'bg-yellow-500'
                 : 'bg-red-500'
-            }`}></div>
+              }`}></div>
             <span className="text-sm text-gray-400">
               {containerStatus.dockerAvailable
                 ? containerStatus.isRunning ? '容器运行中' : '容器未运行'
@@ -289,7 +288,7 @@ export default function Terminal() {
             <option value="nextjs">Next.js</option>
             <option value="react">React</option>
           </select>
-          
+
           <button
             onClick={clearTerminal}
             className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
@@ -319,7 +318,7 @@ export default function Terminal() {
               ⏹️ 停止容器
             </button>
           )}
-          
+
           <button
             onClick={initializeProject}
             disabled={isLoading}
@@ -372,7 +371,7 @@ export default function Terminal() {
             </div>
           ))
         )}
-        
+
         {isLoading && (
           <div className="flex items-center space-x-2 text-yellow-400">
             <div className="animate-spin w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full"></div>
@@ -391,8 +390,8 @@ export default function Terminal() {
             onChange={(e) => setCommand(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && executeCommand()}
             placeholder={
-              containerStatus.isRunning 
-                ? "输入命令..." 
+              containerStatus.isRunning
+                ? "输入命令..."
                 : "请先创建并启动容器"
             }
             disabled={!containerStatus.isRunning || isLoading}

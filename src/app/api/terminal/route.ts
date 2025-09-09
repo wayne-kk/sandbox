@@ -151,7 +151,7 @@ export async function POST(request: Request) {
 
                 // 执行命令
                 const result = await dockerManager.executeCommand(command, {
-                    timeout: command.includes('npm install') ? 180000 : 60000, // npm install给3分钟超时
+                    timeout: command.includes('pnpm install') ? 180000 : 60000, // pnpm install给3分钟超时
                     onOutput: (type, data) => {
                         // 通过SSE广播输出
                         activeConnections.forEach(({ controller, encoder }) => {

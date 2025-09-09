@@ -96,7 +96,7 @@ export async function POST(request: Request) {
                 // 全面清理
                 const commands = [
                     'pkill -f "yarn dev" || true',
-                    'pkill -f "npm run dev" || true',
+                    'pkill -f "pnpm run dev" || true',
                     'pkill -f "next dev" || true',
                     'killall -9 yarn || true',
                     'killall -9 node || true',

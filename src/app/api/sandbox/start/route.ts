@@ -78,10 +78,10 @@ export async function POST() {
                 let installCommand = '';
                 if (action === 'install') {
                     console.log('首次安装依赖...');
-                    installCommand = 'cd sandbox && npm config set registry https://registry.npmmirror.com/ && npm install --silent --prefer-offline --no-audit --no-fund';
+                    installCommand = 'cd sandbox && npm install -g pnpm && pnpm config set registry https://registry.npmmirror.com/ && pnpm install --silent --prefer-offline --no-audit --no-fund';
                 } else if (action === 'update') {
                     console.log('检测到依赖变化，增量更新...');
-                    installCommand = 'cd sandbox && npm config set registry https://registry.npmmirror.com/ && npm ci --silent --prefer-offline --no-audit --no-fund';
+                    installCommand = 'cd sandbox && npm install -g pnpm && pnpm config set registry https://registry.npmmirror.com/ && pnpm install --frozen-lockfile --silent --prefer-offline --no-audit --no-fund';
                 } else {
                     console.log('依赖已是最新，跳过安装');
                     installCommand = 'echo "依赖已是最新"';
@@ -110,7 +110,7 @@ export async function POST() {
         }
 
         // 启动开发服务器 - 强制使用3100端口
-        const startCommand = 'cd sandbox && npm run dev';
+        const startCommand = 'cd sandbox && pnpm run dev';
 
         // 在后台启动服务器
         const childProcess = exec(startCommand, (error, stdout, stderr) => {

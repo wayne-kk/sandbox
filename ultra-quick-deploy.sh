@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "⚡ V0 Sandbox 超快速部署"
-echo "======================="
+echo "⚡ V0 Sandbox 超快速部署 (缓存优化版)"
+echo "====================================="
 
 # 获取服务器IP
 SERVER_IP=$(curl -s ifconfig.me || curl -s ipinfo.io/ip || echo "localhost")
@@ -18,6 +18,10 @@ if ! command -v docker-compose &> /dev/null; then
     echo "❌ Docker Compose 未安装"
     exit 1
 fi
+
+# 创建缓存目录
+mkdir -p .cache/docker
+mkdir -p .cache/npm
 
 # 创建环境变量文件（如果不存在）
 if [ ! -f ".env.local" ]; then
@@ -89,14 +93,17 @@ fi
 # 构建或使用现有镜像
 if [ "$NEED_REBUILD" = true ]; then
     echo "🔨 重新构建应用..."
-    echo "⚡ 使用优化构建配置..."
+    echo "⚡ 使用缓存优化构建配置..."
     
     # 使用BuildKit和并行构建
     export DOCKER_BUILDKIT=1
     export COMPOSE_DOCKER_CLI_BUILD=1
     
-    # 并行构建，显示进度
-    docker compose --progress=plain build --parallel
+    # 设置Docker缓存目录
+    export DOCKER_BUILDKIT_CACHE_MOUNT_NS=default
+    
+    # 并行构建，显示进度，使用缓存
+    docker compose --progress=plain build --parallel --build-arg BUILDKIT_INLINE_CACHE=1
 else
     echo "⚡ 使用现有镜像，跳过构建"
 fi
@@ -127,16 +134,26 @@ fi
 echo "🧪 测试Sandbox启动..."
 sleep 3
 
-# 智能安装sandbox依赖
-echo "📦 智能安装sandbox依赖..."
+# 智能安装sandbox依赖（使用缓存）
+echo "📦 智能安装sandbox依赖（缓存优化）..."
 docker exec v0-sandbox-app sh -c "
     cd /app/sandbox
+    
+    # 设置pnpm缓存
+    export PNPM_CACHE_DIR=/app/.cache/pnpm
+    mkdir -p /app/.cache/pnpm
+    
     if [ ! -d 'node_modules' ]; then
         echo '首次安装依赖...'
-        npm install
-    elif [ 'package.json' -nt 'node_modules' ] || [ 'package-lock.json' -nt 'node_modules' ]; then
+        npm install -g pnpm
+        pnpm config set store-dir /app/.cache/pnpm/store
+        pnpm config set cache-dir /app/.cache/pnpm/cache
+        pnpm install --prefer-offline
+    elif [ 'package.json' -nt 'node_modules' ] || [ 'pnpm-lock.yaml' -nt 'node_modules' ]; then
         echo '检测到依赖变化，增量更新...'
-        npm ci --silent
+        pnpm config set store-dir /app/.cache/pnpm/store
+        pnpm config set cache-dir /app/.cache/pnpm/cache
+        pnpm install --frozen-lockfile --prefer-offline
     else
         echo '依赖已是最新，跳过安装'
     fi
@@ -171,5 +188,8 @@ echo ""
 echo "💡 优化特性:"
 echo "  - 使用BuildKit并行构建"
 echo "  - 智能检测文件变化"
-echo "  - 优化npm安装配置"
+echo "  - 优化pnpm安装配置"
 echo "  - 减少构建上下文大小"
+echo "  - Docker构建缓存"
+echo "  - pnpm包缓存"
+echo "  - 离线优先安装"
