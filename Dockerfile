@@ -30,6 +30,9 @@ RUN npm install --include=dev --verbose --no-optional || \
     (sleep 10 && npm install --include=dev --verbose --no-optional) || \
     (sleep 20 && npm install --include=dev --verbose --no-optional)
 
+# 确保Tailwind CSS正确安装
+RUN npm list tailwindcss || npm install tailwindcss@^3.4.0 --save-dev
+
 # 复制源代码
 COPY . .
 
