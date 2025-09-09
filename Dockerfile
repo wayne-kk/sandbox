@@ -14,8 +14,7 @@ WORKDIR /app
 RUN npm config set registry https://registry.npmmirror.com/ && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
-    npm config set fetch-retries 3 && \
-    npm config set cache-max 0
+    npm config set fetch-retries 3
 
 # 依赖安装阶段
 FROM base AS deps

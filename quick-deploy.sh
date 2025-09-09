@@ -107,7 +107,7 @@ fi
            
            # 使用并行构建和缓存优化
            echo "⚡ 使用优化构建配置..."
-           DOCKER_BUILDKIT=1 docker compose build --parallel --progress=plain
+           DOCKER_BUILDKIT=1 docker compose --progress=plain build --parallel
        else
            echo "⚡ 使用现有镜像，跳过构建"
        fi

@@ -75,7 +75,7 @@ fi
 # 构建并启动
 echo "构建应用..."
 echo "⚡ 使用优化构建配置..."
-DOCKER_BUILDKIT=1 docker compose build --parallel --progress=plain
+DOCKER_BUILDKIT=1 docker compose --progress=plain build --parallel
 
 echo "启动服务..."
 docker compose up -d

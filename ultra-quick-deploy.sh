@@ -96,7 +96,7 @@ if [ "$NEED_REBUILD" = true ]; then
     export COMPOSE_DOCKER_CLI_BUILD=1
     
     # 并行构建，显示进度
-    docker compose build --parallel --progress=plain
+    docker compose --progress=plain build --parallel
 else
     echo "⚡ 使用现有镜像，跳过构建"
 fi
