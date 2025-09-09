@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: development
     container_name: v0-sandbox-app
     ports:
       - "3000:3000"
