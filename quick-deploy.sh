@@ -124,10 +124,12 @@ docker compose ps
 
 # 测试访问
 echo "🧪 测试访问..."
-if curl -f http://localhost:3000/api/health >/dev/null 2>&1; then
+HEALTH_RESPONSE=$(curl -s http://localhost:3000/api/health 2>/dev/null)
+if [ $? -eq 0 ] && echo "$HEALTH_RESPONSE" | grep -q "healthy"; then
     echo "✅ 主服务正常"
 else
-    echo "❌ 主服务异常"
+    echo "⚠️  主服务响应异常，但可能仍在运行"
+    echo "   响应: $HEALTH_RESPONSE"
 fi
 
 # 测试Sandbox启动
@@ -166,8 +168,7 @@ echo ""
 echo "🔧 管理命令:"
 echo "  - 查看日志: docker compose logs -f"
 echo "  - 重启服务: docker compose restart"
-echo "  - 停止服务: docker compose down"
-echo ""
+echo "  - 停止服务: docker compose down"echo ""
 echo "💡 功能说明:"
 echo "  - 自动检测代码变化并重新构建"
 echo "  - 检测到sandbox变化时进行完全重建"

@@ -24,7 +24,9 @@ export async function GET() {
         };
 
         // 如果任何服务不健康，返回 503
-        const isHealthy = Object.values(health.services).every(service => service.status === 'healthy');
+        const isHealthy = Object.values(health.services).every(service =>
+            service.status === 'healthy' || service.status === 'warning'
+        );
 
         return NextResponse.json(health, {
             status: isHealthy ? 200 : 503

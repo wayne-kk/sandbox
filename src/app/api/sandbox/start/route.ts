@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { PORTS, findRunningSandboxPort, findAvailableSandboxPort, getSandboxUrl } from '@/lib/constants/ports';
+import { PORTS, findRunningSandboxPort, findAvailableSandboxPort, getSandboxUrl, checkPortAvailable } from '@/lib/constants/ports';
 
 const execAsync = promisify(exec);
 
@@ -23,17 +23,28 @@ export async function POST() {
             }, { status: 404 });
         }
 
-        // 检查是否已经运行 - 检查 3100-3199 范围
-        const runningPort = await findRunningSandboxPort();
+        // 强制使用3100端口，如果被占用就kill掉
+        console.log('🔍 检查3100端口是否被占用...');
+        const isPort3100InUse = !(await checkPortAvailable(3100));
 
-        if (runningPort) {
-            console.log(`✅ Sandbox 服务器已在运行 (端口 ${runningPort})`);
-            return NextResponse.json({
-                success: true,
-                message: `Sandbox 服务器已在运行`,
-                port: runningPort,
-                url: getSandboxUrl(runningPort)
-            });
+        if (isPort3100InUse) {
+            console.log('⚠️ 3100端口被占用，正在kill掉占用进程...');
+            try {
+                // 查找占用3100端口的进程并kill掉
+                const { stdout: pidOutput } = await execAsync('lsof -ti:3100');
+                if (pidOutput.trim()) {
+                    const pids = pidOutput.trim().split('\n');
+                    for (const pid of pids) {
+                        console.log(`🔪 正在kill进程 ${pid}...`);
+                        await execAsync(`kill -9 ${pid}`);
+                    }
+                    console.log('✅ 已kill掉占用3100端口的进程');
+                    // 等待一下让端口释放
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            } catch (error) {
+                console.warn('kill进程时出错:', error);
+            }
         }
 
         // 先检查是否需要安装依赖
@@ -81,7 +92,7 @@ export async function POST() {
             }
         }
 
-        // 启动开发服务器
+        // 启动开发服务器 - 强制使用3100端口
         const startCommand = 'cd sandbox && npm run dev';
 
         // 在后台启动服务器
@@ -103,8 +114,8 @@ export async function POST() {
         return NextResponse.json({
             success: true,
             message: 'Sandbox 服务器启动中...',
-            port: PORTS.SANDBOX_DEFAULT, // sandbox项目配置的端口
-            url: getSandboxUrl(PORTS.SANDBOX_DEFAULT)
+            port: 3100, // 强制使用3100端口
+            url: getSandboxUrl(3100)
         });
 
     } catch (error) {
@@ -118,32 +129,32 @@ export async function POST() {
 
 export async function GET() {
     try {
-        // 检查服务器状态 - 检查 3100-3199 范围
-        const runningPort = await findRunningSandboxPort();
+        // 只检查3100端口
+        const isPort3100InUse = !(await checkPortAvailable(3100));
 
-        if (runningPort) {
+        if (isPort3100InUse) {
             return NextResponse.json({
                 success: true,
                 running: true,
-                port: runningPort,
-                url: getSandboxUrl(runningPort),
-                message: `Sandbox 服务器正在运行 (端口 ${runningPort})`
+                port: 3100,
+                url: getSandboxUrl(3100),
+                message: `Sandbox 服务器正在运行 (端口 3100)`
             });
         }
 
-        // 没有找到运行中的服务器
+        // 3100端口没有被占用
         return NextResponse.json({
             success: true,
             running: false,
-            port: PORTS.SANDBOX_DEFAULT, // 默认端口
+            port: 3100,
             message: 'Sandbox 服务器未运行'
         });
     } catch (error) {
-        // 如果lsof命令失败，假设服务器未运行
+        // 如果检查失败，假设服务器未运行
         return NextResponse.json({
             success: true,
             running: false,
-            port: PORTS.SANDBOX_DEFAULT,
+            port: 3100,
             message: '无法检查服务器状态，假设未运行'
         });
     }

@@ -8,8 +8,8 @@ export async function POST(request: Request) {
     try {
         // 尝试停止正在运行的 Next.js 进程
         const commands = [
-            // 杀死占用 3001 端口的进程
-            "lsof -ti:3001 | xargs kill -9",
+            // 杀死占用 3100 端口的进程
+            "lsof -ti:3100 | xargs kill -9",
             // 杀死所有 Next.js 进程
             "pkill -f 'next dev'",
             // 杀死所有 npm 进程
