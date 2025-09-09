@@ -30,12 +30,18 @@ fi
 
 # 检查源代码是否有变化
 if [ -f ".last-deploy" ]; then
-    if [ "package.json" -nt ".last-deploy" ] || [ "Dockerfile" -nt ".last-deploy" ]; then
+    if [ "package.json" -nt ".last-deploy" ] || [ "Dockerfile" -nt ".last-deploy" ] || [ "docker-compose.yml" -nt ".last-deploy" ]; then
         echo "📝 源代码有变化，需要重新构建"
         NEED_REBUILD=true
     fi
 else
     echo "📦 首次部署，需要构建"
+    NEED_REBUILD=true
+fi
+
+# 检查是否有sandbox相关文件变化
+if git diff HEAD~1 --name-only 2>/dev/null | grep -q "sandbox/"; then
+    echo "📝 检测到sandbox文件变化，需要重新构建"
     NEED_REBUILD=true
 fi
 
@@ -89,9 +95,19 @@ if [ -f "sandbox/package.json" ]; then
     echo "✅ 已修复sandbox启动配置"
 fi
 
+# 检查是否需要重新构建
 if [ "$NEED_REBUILD" = true ]; then
     echo "🔨 重新构建应用..."
-    docker compose build
+    
+    # 如果检测到sandbox变化，进行完全重建
+    if git diff HEAD~1 --name-only 2>/dev/null | grep -q "sandbox/"; then
+        echo "🧹 检测到sandbox变化，进行完全重建..."
+        docker system prune -f
+        docker builder prune -f
+        docker rmi v0-sandbox-app 2>/dev/null || true
+    fi
+    
+    docker compose build --no-cache
 else
     echo "⚡ 使用现有镜像，跳过构建"
 fi
@@ -130,6 +146,16 @@ else
     echo "⚠️  Sandbox服务可能需要手动启动"
 fi
 
+# 验证sandbox代码更新（如果进行了重建）
+if [ "$NEED_REBUILD" = true ]; then
+    echo "🔍 验证sandbox代码更新..."
+    if docker compose exec app ls -la /app/sandbox/ 2>/dev/null | grep -q "package.json"; then
+        echo "✅ Sandbox目录已正确挂载"
+    else
+        echo "⚠️  Sandbox目录挂载可能有问题"
+    fi
+fi
+
 # 记录部署时间
 touch .last-deploy
 
@@ -138,4 +164,14 @@ echo "🎉 快速部署完成！"
 echo "📱 访问地址:"
 echo "  - 主应用: http://$SERVER_IP:3000"
 echo "  - Sandbox预览: http://$SERVER_IP:3000/sandbox"
-echo "🔧 管理命令: docker compose logs -f"
+echo ""
+echo "🔧 管理命令:"
+echo "  - 查看日志: docker compose logs -f"
+echo "  - 重启服务: docker compose restart"
+echo "  - 停止服务: docker compose down"
+echo ""
+echo "💡 功能说明:"
+echo "  - 自动检测代码变化并重新构建"
+echo "  - 检测到sandbox变化时进行完全重建"
+echo "  - 自动修复sandbox配置问题"
+echo "  - 验证sandbox代码更新"
