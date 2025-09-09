@@ -9,6 +9,7 @@ services:
       - "3100-3199:3100-3199"
     env_file:
       - .env.local
+      - .env
     environment:
       - NODE_ENV=development
       - DATABASE_URL=${DATABASE_URL:-file:./data/prod.db}

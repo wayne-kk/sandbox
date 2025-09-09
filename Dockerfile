@@ -1,5 +1,5 @@
 # 开发环境 Dockerfile - 官方镜像源版
-FROM node:18-alpine
+FROM node:22-alpine
 
 # 安装必要的系统依赖
 RUN apk add --no-cache libc6-compat curl
