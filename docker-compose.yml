@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runner
     container_name: v0-sandbox-app
     ports:
       - "3000:3000"
@@ -57,6 +58,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - v0-sandbox-network
+
+  # Sandbox 预览服务
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: sandbox
+    container_name: v0-sandbox-preview
+    ports:
+      - "3100:3100"
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=development
+      - PORT=3100
+      - HOSTNAME=0.0.0.0
+    volumes:
+      - ./sandbox:/app/sandbox
+    restart: unless-stopped
     networks:
       - v0-sandbox-network
 
