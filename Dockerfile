@@ -5,10 +5,6 @@ FROM node:20-slim
 RUN apt-get update && apt-get install -y \
     curl \
     openssl \
-    python3 \
-    make \
-    g++ \
-    build-essential \
     git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -33,6 +29,9 @@ RUN npm install --include=dev --verbose --no-optional || \
 
 # 确保Tailwind CSS正确安装
 RUN npm list tailwindcss || npm install tailwindcss@^3.4.0 --save-dev
+
+# 如果npm安装失败，安装编译工具并重试
+RUN npm list tailwindcss || (apt-get update && apt-get install -y python3 make g++ && npm install tailwindcss@^3.4.0 --save-dev)
 
 # 复制源代码
 COPY . .
