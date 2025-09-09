@@ -27,6 +27,9 @@ fi
 
 # 创建简单的环境变量文件
 cat > .env.local << EOF
+# 生产环境配置
+NODE_ENV=production
+NEXT_PUBLIC_NODE_ENV=production
 SERVER_HOST=$SERVER_IP
 NEXT_PUBLIC_SERVER_HOST=$SERVER_IP
 SANDBOX_PREVIEW_URL=http://$SERVER_IP:8080/sandbox/
@@ -52,6 +55,17 @@ echo "环境变量已创建"
 
 # 停止旧容器
 docker compose down 2>/dev/null || true
+
+# 修复sandbox配置
+echo "修复sandbox配置..."
+if [ -f "sandbox/package.json" ]; then
+    # 备份原文件
+    cp sandbox/package.json sandbox/package.json.bak
+    
+    # 更新启动脚本，禁用turbopack，使用0.0.0.0 hostname
+    sed -i 's/"dev": "next dev --turbopack --port 3100"/"dev": "next dev --port 3100 --hostname 0.0.0.0"/' sandbox/package.json
+    echo "✅ 已修复sandbox启动配置"
+fi
 
 # 构建并启动
 echo "构建应用..."

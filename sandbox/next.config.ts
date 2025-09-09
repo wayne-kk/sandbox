@@ -2,9 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  // 配置sandbox项目的静态资源路径，避免与主应用冲突
-  assetPrefix: '/sandbox-assets',
-  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -23,6 +20,23 @@ const nextConfig: NextConfig = {
       allowedOrigins: ['*'],
     },
   },
+  // 配置WebSocket和静态资源路径
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      // 配置WebSocket连接
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    return config;
+  },
+  // 配置开发服务器
+  devIndicators: {
+    buildActivity: false,
+  },
+  // 配置静态资源路径
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/sandbox-assets' : '',
   async headers() {
     return [
       {
@@ -39,6 +53,11 @@ const nextConfig: NextConfig = {
           {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type, Authorization',
+          },
+          // 允许iframe嵌入
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
           },
         ],
       },

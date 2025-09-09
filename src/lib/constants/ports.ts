@@ -9,7 +9,7 @@ export const PORTS = {
     SANDBOX_DEFAULT: 3100,
 
     // 其他可能的端口（用于检测）
-    SANDBOX_ALTERNATIVES: [3100, 3103, 3001, 3000],
+    SANDBOX_ALTERNATIVES: [3100, 3101, 3102, 3103],
 
     // 预览端口
     PREVIEW: 3100,
@@ -35,18 +35,40 @@ export function getServerHost(): string {
 
 // 获取 Sandbox URL
 export function getSandboxUrl(port?: number): string {
-    // 优先使用客户端可访问的环境变量
-    const url = process.env.NEXT_PUBLIC_SANDBOX_PREVIEW_URL ||
+    // 检查是否为开发环境
+    const isDevelopment = process.env.NODE_ENV === 'development' ||
+        process.env.NEXT_PUBLIC_NODE_ENV === 'development' ||
+        !process.env.NODE_ENV;
+
+    // 开发环境使用 localhost
+    if (isDevelopment) {
+        const devPort = port || PORTS.SANDBOX_DEFAULT;
+        const devUrl = `http://localhost:${devPort}`;
+
+        console.log('🔍 开发环境 Sandbox URL:', {
+            port: devPort,
+            url: devUrl,
+            isDevelopment: true
+        });
+
+        return devUrl;
+    }
+
+    // 生产环境：优先使用环境变量配置的URL
+    const productionUrl = process.env.NEXT_PUBLIC_SANDBOX_PREVIEW_URL ||
         process.env.SANDBOX_PREVIEW_URL ||
         'http://115.190.100.24/sandbox/';
 
     // 添加调试日志
-    console.log('🔍 getSandboxUrl调试:', {
+    console.log('🔍 生产环境 Sandbox URL:', {
         port,
         isClient: typeof window !== 'undefined',
         windowHost: typeof window !== 'undefined' ? window.location.host : 'N/A',
-        generatedUrl: url,
+        generatedUrl: productionUrl,
+        isDevelopment: false,
         env: {
+            NODE_ENV: process.env.NODE_ENV,
+            NEXT_PUBLIC_NODE_ENV: process.env.NEXT_PUBLIC_NODE_ENV,
             NEXT_PUBLIC_SANDBOX_PREVIEW_URL: process.env.NEXT_PUBLIC_SANDBOX_PREVIEW_URL,
             SANDBOX_PREVIEW_URL: process.env.SANDBOX_PREVIEW_URL,
             SERVER_HOST: process.env.SERVER_HOST,
@@ -54,7 +76,7 @@ export function getSandboxUrl(port?: number): string {
         }
     });
 
-    return url;
+    return productionUrl;
 }
 
 // 获取主应用 URL

@@ -43,6 +43,9 @@ fi
 if [ ! -f ".env.local" ]; then
     echo "📝 创建环境变量文件..."
     cat > .env.local << EOF
+# 生产环境配置
+NODE_ENV=production
+NEXT_PUBLIC_NODE_ENV=production
 SERVER_HOST=$SERVER_IP
 NEXT_PUBLIC_SERVER_HOST=$SERVER_IP
 SANDBOX_PREVIEW_URL=http://$SERVER_IP:3000/sandbox/
@@ -68,6 +71,17 @@ fi
 # 停止旧容器
 echo "🛑 停止旧容器..."
 docker compose down 2>/dev/null || true
+
+# 修复sandbox配置
+echo "🔧 修复sandbox配置..."
+if [ -f "sandbox/package.json" ]; then
+    # 备份原文件
+    cp sandbox/package.json sandbox/package.json.bak
+    
+    # 更新启动脚本，禁用turbopack，使用0.0.0.0 hostname
+    sed -i 's/"dev": "next dev --turbopack --port 3100"/"dev": "next dev --port 3100 --hostname 0.0.0.0"/' sandbox/package.json
+    echo "✅ 已修复sandbox启动配置"
+fi
 
 if [ "$NEED_REBUILD" = true ]; then
     echo "🔨 重新构建应用..."
@@ -96,10 +110,26 @@ else
     echo "❌ 主服务异常"
 fi
 
+# 测试Sandbox启动
+echo "🧪 测试Sandbox启动..."
+sleep 5
+curl -X POST http://localhost:3000/api/sandbox/start >/dev/null 2>&1
+sleep 10
+
+# 检查sandbox状态
+SANDBOX_STATUS=$(curl -s http://localhost:3000/api/sandbox/start | jq -r '.running // false' 2>/dev/null || echo "false")
+if [ "$SANDBOX_STATUS" = "true" ]; then
+    echo "✅ Sandbox服务正常"
+else
+    echo "⚠️  Sandbox服务可能需要手动启动"
+fi
+
 # 记录部署时间
 touch .last-deploy
 
 echo ""
 echo "🎉 快速部署完成！"
-echo "📱 访问地址: http://$SERVER_IP:3000"
+echo "📱 访问地址:"
+echo "  - 主应用: http://$SERVER_IP:3000"
+echo "  - Sandbox预览: http://$SERVER_IP:3000/sandbox"
 echo "🔧 管理命令: docker compose logs -f"

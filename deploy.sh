@@ -27,6 +27,9 @@ fi
 
 # 创建简单的环境变量文件
 cat > .env.local << EOF
+# 生产环境配置
+NODE_ENV=production
+NEXT_PUBLIC_NODE_ENV=production
 SERVER_HOST=$SERVER_IP
 NEXT_PUBLIC_SERVER_HOST=$SERVER_IP
 SANDBOX_PREVIEW_URL=http://$SERVER_IP:3000/sandbox/
@@ -57,9 +60,21 @@ docker compose down 2>/dev/null || true
 echo "清理Docker缓存..."
 docker system prune -f 2>/dev/null || true
 
+# 修复sandbox配置
+echo "修复sandbox配置..."
+# 确保sandbox使用正确的端口和配置
+if [ -f "sandbox/package.json" ]; then
+    # 备份原文件
+    cp sandbox/package.json sandbox/package.json.bak
+    
+    # 更新启动脚本，禁用turbopack，使用0.0.0.0 hostname
+    sed -i 's/"dev": "next dev --turbopack --port 3100"/"dev": "next dev --port 3100 --hostname 0.0.0.0"/' sandbox/package.json
+    echo "✅ 已修复sandbox启动配置"
+fi
+
 # 构建并启动
 echo "构建应用..."
-docker compose build
+docker compose build --no-cache
 
 echo "启动服务..."
 docker compose up -d
@@ -84,6 +99,20 @@ if curl -f http://localhost:8080 >/dev/null 2>&1; then
     echo "✅ Nginx代理正常"
 else
     echo "❌ Nginx代理异常"
+fi
+
+# 测试Sandbox启动
+echo "测试Sandbox启动..."
+sleep 5
+curl -X POST http://localhost:3000/api/sandbox/start >/dev/null 2>&1
+sleep 10
+
+# 检查sandbox状态
+SANDBOX_STATUS=$(curl -s http://localhost:3000/api/sandbox/start | jq -r '.running // false' 2>/dev/null || echo "false")
+if [ "$SANDBOX_STATUS" = "true" ]; then
+    echo "✅ Sandbox服务正常"
+else
+    echo "⚠️  Sandbox服务可能需要手动启动"
 fi
 
 echo ""

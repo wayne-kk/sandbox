@@ -2,7 +2,13 @@
 
 # dependencies
 /node_modules
-/sandbox
+/sandbox/node_modules
+/sandbox/.next
+/sandbox/out
+/sandbox/build
+/sandbox/dist
+/sandbox/*.log
+/sandbox/.env*
 /.pnp
 .pnp.*
 .yarn/*
