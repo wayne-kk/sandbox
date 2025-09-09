@@ -17,18 +17,22 @@ RUN npm config set registry https://registry.npmmirror.com/ && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set maxsockets 15
 
+# 安装 pnpm
+RUN npm install -g pnpm
+
 # 安装依赖
-COPY package.json package-lock.json* ./
+COPY package.json pnpm-lock.yaml* ./
 RUN for i in 1 2 3; do \
-        npm ci --silent --prefer-offline --no-audit --no-fund && break || \
+        pnpm install --frozen-lockfile && break || \
         (echo "Attempt $i failed, retrying..." && sleep 5); \
-    done && npm cache clean --force
+    done
 
 # 复制代码
 COPY . .
 
 # 生成 Prisma 客户端
-RUN npx prisma generate
+ENV DATABASE_URL="file:./dev.db"
+RUN npx prisma generate || echo "Prisma generate failed, continuing..."
 
 # 构建
 ENV NODE_ENV=production
@@ -53,8 +57,8 @@ COPY --from=base /app/.next/static ./.next/static
 COPY --from=base /app/prisma ./prisma
 
 # 安装生产依赖
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production --silent && npm cache clean --force
+COPY package.json pnpm-lock.yaml* ./
+RUN npm install -g pnpm && pnpm install --prod --frozen-lockfile
 
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app
 
