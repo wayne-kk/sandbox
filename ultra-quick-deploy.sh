@@ -126,6 +126,23 @@ fi
 # 测试Sandbox启动
 echo "🧪 测试Sandbox启动..."
 sleep 3
+
+# 智能安装sandbox依赖
+echo "📦 智能安装sandbox依赖..."
+docker exec v0-sandbox-app sh -c "
+    cd /app/sandbox
+    if [ ! -d 'node_modules' ]; then
+        echo '首次安装依赖...'
+        npm install
+    elif [ 'package.json' -nt 'node_modules' ] || [ 'package-lock.json' -nt 'node_modules' ]; then
+        echo '检测到依赖变化，增量更新...'
+        npm ci --silent
+    else
+        echo '依赖已是最新，跳过安装'
+    fi
+" >/dev/null 2>&1
+
+# 启动sandbox
 curl -X POST http://localhost:3000/api/sandbox/start >/dev/null 2>&1
 sleep 5
 

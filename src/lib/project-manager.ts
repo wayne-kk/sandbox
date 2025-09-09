@@ -514,15 +514,15 @@ export class ProjectManager {
         }
 
         // 直接写入文件
-            for (const [filePath, content] of Object.entries(files)) {
-                const fullPath = path.join(workingDir, filePath);
-                const dirPath = path.dirname(fullPath);
+        for (const [filePath, content] of Object.entries(files)) {
+            const fullPath = path.join(workingDir, filePath);
+            const dirPath = path.dirname(fullPath);
 
-                try {
-                    await fs.mkdir(dirPath, { recursive: true });
-                    await fs.writeFile(fullPath, content, 'utf-8');
-                    console.log(`✅ 文件已保存: ${fullPath}`);
-                } catch (error) {
+            try {
+                await fs.mkdir(dirPath, { recursive: true });
+                await fs.writeFile(fullPath, content, 'utf-8');
+                console.log(`✅ 文件已保存: ${fullPath}`);
+            } catch (error) {
                 console.error(`❌ 写入文件失败 ${filePath}:`, error);
                 throw error;
             }

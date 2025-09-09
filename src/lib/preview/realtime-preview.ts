@@ -42,12 +42,8 @@ export class RealtimePreviewManager {
 
             this.sessions.set(projectId, session);
 
-            // 根据框架选择启动方式
-            let previewUrl: string;
-            let containerId: string | undefined;
-
             // 直接使用sandbox目录进行预览
-            previewUrl = `/preview/${projectId}/`;
+            const previewUrl = `/sandbox/`;
             console.log(`📁 使用sandbox预览模式: ${previewUrl}`);
 
             // 更新会话状态
@@ -55,7 +51,7 @@ export class RealtimePreviewManager {
             this.sessions.set(projectId, session);
 
             console.log(`✅ 预览启动成功: ${previewUrl}`);
-            return { url: previewUrl, containerId };
+            return { url: previewUrl };
 
         } catch (error) {
             console.error(`❌ 预览启动失败:`, error);
@@ -72,7 +68,7 @@ export class RealtimePreviewManager {
     }
 
     /**
-     * 更新预览文件
+     * 更新预览文件 - 直接使用sandbox目录
      */
     async updatePreview(
         projectId: string,
@@ -90,16 +86,8 @@ export class RealtimePreviewManager {
             session.files = files;
             session.lastUpdate = new Date();
 
-            if (session.framework === 'vanilla') {
-                // 重新生成静态预览
-                await this.updateStaticPreview(projectId, files);
-            } else if (session.containerId) {
-                // 同步文件到容器
-                await this.syncFilesToContainer(session.containerId, files);
-            }
-
-            // 触发热重载
-            await this.triggerHotReload(projectId);
+            // 直接使用sandbox目录，无需额外操作
+            console.log(`📁 预览已更新，使用sandbox目录: ${projectId}`);
 
             console.log(`✅ 预览更新成功: ${projectId}`);
 
@@ -164,40 +152,18 @@ export class RealtimePreviewManager {
     }
 
     /**
-     * 创建静态预览
+     * 创建静态预览 - 直接使用sandbox目录
      */
     private async createStaticPreview(
         projectId: string,
         files: { [path: string]: string }
     ): Promise<string> {
         try {
-            const fs = await import('fs/promises');
-            const path = await import('path');
+            // 直接使用sandbox目录，不创建临时文件
+            console.log(`📁 使用sandbox目录进行预览: ${projectId}`);
 
-            // 创建临时预览目录
-            const previewDir = path.join(process.cwd(), 'temp', 'preview', projectId);
-            await fs.mkdir(previewDir, { recursive: true });
-
-            // 写入文件到预览目录
-            for (const [filePath, content] of Object.entries(files)) {
-                const fullPath = path.join(previewDir, filePath);
-                const dirPath = path.dirname(fullPath);
-
-                // 确保目录存在
-                await fs.mkdir(dirPath, { recursive: true });
-
-                // 写入文件
-                await fs.writeFile(fullPath, content, 'utf-8');
-                console.log(`📄 创建预览文件: ${fullPath}`);
-            }
-
-            // 创建一个简单的HTML入口文件
-            const indexHtml = this.generateIndexHtml(files);
-            const indexPath = path.join(previewDir, 'index.html');
-            await fs.writeFile(indexPath, indexHtml, 'utf-8');
-
-            console.log(`✅ 静态预览创建完成: ${previewDir}`);
-            return `/preview/${projectId}/`;
+            // 返回sandbox的预览URL
+            return `/sandbox/`;
         } catch (error) {
             console.error('创建静态预览失败:', error);
             throw new Error(`创建静态预览失败: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -205,87 +171,11 @@ export class RealtimePreviewManager {
     }
 
     /**
-     * 生成简单的HTML入口文件
+     * 生成简单的HTML入口文件 - 已删除，直接使用sandbox目录
      */
     private generateIndexHtml(files: { [path: string]: string }): string {
-        // 查找主要的React组件文件
-        const mainComponent = Object.keys(files).find(file =>
-            file.includes('page.tsx') ||
-            file.includes('App.tsx') ||
-            file.includes('index.tsx')
-        );
-
-        if (mainComponent) {
-            return `
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>组件预览</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        .preview-container { max-width: 1200px; margin: 0 auto; }
-    </style>
-</head>
-<body>
-    <div id="root" class="preview-container">
-        <div style="text-align: center; padding: 50px; color: #666;">
-            <h2>组件预览</h2>
-            <p>正在加载组件...</p>
-        </div>
-    </div>
-    
-    <script type="text/babel">
-        // 这里可以添加组件代码
-        const { useState, useEffect } = React;
-        
-        function PreviewApp() {
-            return (
-                <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
-                    <h3>组件预览</h3>
-                    <p>这是一个简单的预览界面。实际的组件代码需要进一步处理。</p>
-                </div>
-            );
-        }
-        
-        ReactDOM.render(<PreviewApp />, document.getElementById('root'));
-    </script>
-</body>
-</html>`;
-        }
-
-        // 如果没有找到React组件，返回简单的HTML
-        return `
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文件预览</title>
-    <style>
-        body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        .file-list { max-width: 800px; margin: 0 auto; }
-        .file-item { padding: 10px; border-bottom: 1px solid #eee; }
-        .file-name { font-weight: bold; color: #333; }
-        .file-size { color: #666; font-size: 0.9em; }
-    </style>
-</head>
-<body>
-    <div class="file-list">
-        <h2>生成的文件列表</h2>
-        ${Object.keys(files).map(fileName => `
-            <div class="file-item">
-                <div class="file-name">${fileName}</div>
-                <div class="file-size">${files[fileName].length} 字符</div>
-            </div>
-        `).join('')}
-    </div>
-</body>
-</html>`;
+        // 不再需要生成HTML，直接使用sandbox目录
+        return '';
     }
 
     /**
@@ -318,35 +208,6 @@ export class RealtimePreviewManager {
         }
     }
 
-    /**
-     * 更新静态预览
-     */
-    private async updateStaticPreview(
-        projectId: string,
-        files: { [path: string]: string }
-    ): Promise<void> {
-        const previewDir = `/tmp/preview/${projectId}`;
-
-        // 更新文件
-        for (const [filePath, content] of Object.entries(files)) {
-            const fullPath = `${previewDir}/${filePath}`;
-            console.log(`🔄 更新文件: ${fullPath}`);
-        }
-    }
-
-    /**
-     * 同步文件到容器
-     */
-    private async syncFilesToContainer(
-        containerId: string,
-        files: { [path: string]: string }
-    ): Promise<void> {
-        // 使用docker cp命令同步文件
-        for (const [filePath, content] of Object.entries(files)) {
-            console.log(`📁 同步文件到容器: ${containerId}:${filePath}`);
-            // 实际的Docker文件同步操作
-        }
-    }
 
     /**
      * 触发热重载

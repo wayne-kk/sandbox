@@ -70,13 +70,28 @@ export async function POST() {
         if (needsInstall) {
             console.log('📦 检测到缺少 node_modules，正在安装依赖...');
             try {
-                // 优化npm安装配置
-                const installCommand = 'cd sandbox && npm config set registry https://registry.npmmirror.com/ && npm ci --silent --prefer-offline --no-audit --no-fund';
+                // 智能安装：检查是否需要增量更新
+                const checkCommand = 'cd sandbox && if [ -d "node_modules" ]; then if [ "package.json" -nt "node_modules" ] || [ "package-lock.json" -nt "node_modules" ]; then echo "update"; else echo "skip"; fi; else echo "install"; fi';
+                const { stdout: checkResult } = await execAsync(checkCommand);
+                const action = checkResult.trim();
+
+                let installCommand = '';
+                if (action === 'install') {
+                    console.log('首次安装依赖...');
+                    installCommand = 'cd sandbox && npm config set registry https://registry.npmmirror.com/ && npm install --silent --prefer-offline --no-audit --no-fund';
+                } else if (action === 'update') {
+                    console.log('检测到依赖变化，增量更新...');
+                    installCommand = 'cd sandbox && npm config set registry https://registry.npmmirror.com/ && npm ci --silent --prefer-offline --no-audit --no-fund';
+                } else {
+                    console.log('依赖已是最新，跳过安装');
+                    installCommand = 'echo "依赖已是最新"';
+                }
+
                 const { stdout: installOutput, stderr: installError } = await execAsync(installCommand, {
                     timeout: 180000 // 3分钟超时
                 });
 
-                if (installError && !installOutput) {
+                if (installError && !installOutput && action !== 'skip') {
                     console.error('依赖安装失败:', installError);
                     return NextResponse.json({
                         success: false,
