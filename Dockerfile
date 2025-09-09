@@ -6,7 +6,7 @@ ARG NODE_ENV=development
 ARG BUILD_TARGET=dev
 
 # 安装必要的系统依赖
-RUN apk add --no-cache libc6-compat curl
+RUN apk add --no-cache libc6-compat curl openssl
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ RUN npm ci --include=dev --silent && \
 COPY . .
 
 # 生成 Prisma 客户端
-RUN npx prisma generate --silent
+RUN npx prisma generate
 
 # 开发环境阶段
 FROM base AS development
@@ -39,7 +39,7 @@ RUN npm run build --silent
 
 # 生产环境运行阶段
 FROM node:22-alpine AS production
-RUN apk add --no-cache libc6-compat curl
+RUN apk add --no-cache libc6-compat curl openssl
 WORKDIR /app
 
 # 复制构建产物
