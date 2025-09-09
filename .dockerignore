@@ -61,5 +61,5 @@ README.md
 DEPLOY.md
 DOCKERFILE-UNIFIED.md
 
-# 排除 sandbox 目录（避免重复构建）
-sandbox/
+# 保留 sandbox 目录用于预览功能
+# sandbox/
