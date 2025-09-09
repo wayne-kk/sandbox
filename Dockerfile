@@ -1,12 +1,12 @@
-# 稳定版 Dockerfile - 开发环境 (Ubuntu基础镜像)
-FROM node:20-slim
+# 优化版 Dockerfile - 减少镜像大小
+FROM node:20-alpine
 
 # 安装必要的系统依赖
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     curl \
     openssl \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates
 
 WORKDIR /app
 
@@ -19,19 +19,10 @@ RUN npm config set registry https://registry.npmmirror.com/ && \
 # 复制 package 文件
 COPY package.json package-lock.json* ./
 
-# 分步安装依赖，增加重试机制
-RUN npm cache clean --force
-# 删除package-lock.json以确保使用最新的依赖版本
-RUN rm -f package-lock.json
-RUN npm install --include=dev --verbose --no-optional || \
-    (sleep 10 && npm install --include=dev --verbose --no-optional) || \
-    (sleep 20 && npm install --include=dev --verbose --no-optional)
-
-# 确保Tailwind CSS正确安装
-RUN npm list tailwindcss || npm install tailwindcss@^3.4.0 --save-dev
-
-# 如果npm安装失败，安装编译工具并重试
-RUN npm list tailwindcss || (apt-get update && apt-get install -y python3 make g++ && npm install tailwindcss@^3.4.0 --save-dev)
+# 安装依赖
+RUN npm cache clean --force && \
+    rm -f package-lock.json && \
+    npm install --include=dev --no-optional
 
 # 复制源代码
 COPY . .

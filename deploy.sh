@@ -53,9 +53,13 @@ echo "环境变量已创建"
 # 停止旧容器
 docker compose down 2>/dev/null || true
 
+# 清理Docker缓存
+echo "清理Docker缓存..."
+docker system prune -f 2>/dev/null || true
+
 # 构建并启动
 echo "构建应用..."
-docker compose build --no-cache
+docker compose build
 
 echo "启动服务..."
 docker compose up -d
