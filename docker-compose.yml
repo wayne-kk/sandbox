@@ -58,6 +58,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./sandbox:/app/sandbox
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     healthcheck:

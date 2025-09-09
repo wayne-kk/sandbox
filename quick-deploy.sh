@@ -72,6 +72,12 @@ fi
 echo "🛑 停止旧容器..."
 docker compose down 2>/dev/null || true
 
+# 拉取最新代码（如果是在服务器上运行）
+if [ -d ".git" ]; then
+    echo "📥 拉取最新代码..."
+    git pull origin main 2>/dev/null || echo "⚠️  Git拉取失败，继续使用当前代码"
+fi
+
 # 修复sandbox配置
 echo "🔧 修复sandbox配置..."
 if [ -f "sandbox/package.json" ]; then
