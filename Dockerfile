@@ -22,6 +22,9 @@ RUN npm install
 # 复制源代码
 COPY . .
 
+# 复制 sandbox 目录到容器内
+COPY sandbox ./sandbox
+
 # 生成 Prisma 客户端
 RUN npx prisma generate
 
