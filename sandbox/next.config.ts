@@ -20,23 +20,22 @@ const nextConfig: NextConfig = {
       allowedOrigins: ['*'],
     },
   },
-  // 配置WebSocket和静态资源路径
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      // 配置WebSocket连接
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-      };
-    }
-    return config;
-  },
   // 配置开发服务器
   devIndicators: {
     buildActivity: false,
   },
-  // 配置静态资源路径
-  assetPrefix: process.env.NODE_ENV === 'production' ? '/sandbox-assets' : '',
+  // 禁用HMR以避免WebSocket问题
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      // 禁用HMR
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: /node_modules/,
+      };
+    }
+    return config;
+  },
   async headers() {
     return [
       {

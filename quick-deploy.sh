@@ -90,8 +90,8 @@ if [ -f "sandbox/package.json" ]; then
     # 备份原文件
     cp sandbox/package.json sandbox/package.json.bak
     
-    # 更新启动脚本，禁用turbopack，使用0.0.0.0 hostname
-    sed -i 's/"dev": "next dev --turbopack --port 3100"/"dev": "next dev --port 3100 --hostname 0.0.0.0"/' sandbox/package.json
+    # 更新启动脚本，禁用turbopack和HMR，使用0.0.0.0 hostname
+    sed -i 's/"dev": "next dev --turbopack --port 3100"/"dev": "next dev --port 3100 --hostname 0.0.0.0 --no-turbo"/' sandbox/package.json
     echo "✅ 已修复sandbox启动配置"
 fi
 
