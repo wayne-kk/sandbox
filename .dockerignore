@@ -1,11 +1,8 @@
-# 排除所有不必要的文件和目录
-temp/
-docs/
-monitoring/
-sql/
-scripts/
-data/
-logs/
+# 排除不需要的文件和目录
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # 排除开发文件
 .env.local
@@ -14,52 +11,67 @@ logs/
 .env.production.local
 
 # 排除构建产物
-.next/
-out/
-build/
-dist/
-node_modules/
+.next
+out
+dist
+build
 
-# 排除版本控制
-.git/
+# 排除临时文件
+temp
+tmp
+*.tmp
+*.temp
+
+# 排除文档和脚本
+docs
+scripts
+*.md
+README*
+
+# 排除监控配置
+monitoring
+
+# 排除SQL文件
+sql
+
+# 排除Docker相关文件
+Dockerfile*
+docker-compose*.yml
+nginx*.conf
+.dockerignore
+
+# 排除部署脚本
+deploy*.sh
+*.sh
+
+# 排除Git相关
+.git
 .gitignore
 
-# 排除 IDE 文件
-.vscode/
-.idea/
+# 排除IDE配置
+.vscode
+.idea
 *.swp
 *.swo
+
+# 排除日志文件
+logs
+*.log
+
+# 排除测试文件
+test
+tests
+__tests__
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# 排除缓存
+.cache
+.parcel-cache
+.eslintcache
 
 # 排除操作系统文件
 .DS_Store
 Thumbs.db
-
-# 排除测试和日志文件
-coverage/
-.nyc_output/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# 排除临时文件
-*.tmp
-*.temp
-
-# 排除 Docker 相关文件
-Dockerfile*
-docker-compose*.yml
-.dockerignore
-
-# 排除部署和配置文件
-deploy*.sh
-check-requirements.sh
-install-deps*.sh
-nginx*.conf
-*.md
-README.md
-DEPLOY.md
-DOCKERFILE-UNIFIED.md
-
-# 保留 sandbox 目录用于预览功能
-# sandbox/

@@ -70,8 +70,10 @@ export async function POST() {
         if (needsInstall) {
             console.log('📦 检测到缺少 node_modules，正在安装依赖...');
             try {
-                const { stdout: installOutput, stderr: installError } = await execAsync('cd sandbox && npm install --silent', {
-                    timeout: 120000 // 2分钟超时
+                // 优化npm安装配置
+                const installCommand = 'cd sandbox && npm config set registry https://registry.npmmirror.com/ && npm ci --silent --prefer-offline --no-audit --no-fund';
+                const { stdout: installOutput, stderr: installError } = await execAsync(installCommand, {
+                    timeout: 180000 // 3分钟超时
                 });
 
                 if (installError && !installOutput) {
