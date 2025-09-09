@@ -97,7 +97,7 @@ export default function Home() {
               className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors flex items-center space-x-1"
             >
               <span>📦</span>
-              <span>上传组件</span>
+              <span>上传组件包并预览</span>
             </button>
 
             <a
