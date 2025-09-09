@@ -1,8 +1,15 @@
-# 稳定版 Dockerfile - 开发环境
-FROM node:22-alpine
+# 稳定版 Dockerfile - 开发环境 (Ubuntu基础镜像)
+FROM node:20-slim
 
 # 安装必要的系统依赖
-RUN apk add --no-cache libc6-compat curl openssl python3 make g++
+RUN apt-get update && apt-get install -y \
+    curl \
+    openssl \
+    python3 \
+    make \
+    g++ \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
