@@ -21,7 +21,7 @@ export class ProductionDockerManager {
     private containers: Map<string, ProductionContainer> = new Map();
     private nginxConfigPath = '/tmp/nginx-sandbox.conf';
     private maxContainers = 1000; // 大幅提升容器数量限制
-    private baseImageName = 'node:18-alpine';
+    private baseImageName = 'node:22-alpine';
     private sandboxBasePath = '/tmp/sandboxes';
 
     constructor() {

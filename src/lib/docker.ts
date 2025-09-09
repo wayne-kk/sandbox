@@ -57,7 +57,7 @@ export class DockerManager {
         try {
             // 创建 Dockerfile
             const dockerfile = `
-FROM node:18-alpine
+FROM node:22-alpine
 
 # 设置工作目录
 WORKDIR /app
@@ -118,12 +118,12 @@ CMD ["tail", "-f", "/dev/null"]
 
         if (!buildSuccess) {
             console.log('镜像构建失败，使用标准 Node.js 镜像');
-            imageToUse = 'node:18-alpine';
+            imageToUse = 'node:22-alpine';
         }
 
         try {
             // 尝试拉取镜像（如果本地没有）
-            if (imageToUse === 'node:18-alpine') {
+            if (imageToUse === 'node:22-alpine') {
                 try {
                     console.log('检查并拉取 Node.js 镜像...');
                     await execAsync(`docker pull ${imageToUse}`, { timeout: 60000 });
@@ -140,10 +140,10 @@ CMD ["tail", "-f", "/dev/null"]
                             imageToUse = availableImages[0];
                             console.log(`使用现有镜像: ${imageToUse}`);
                         } else {
-                            throw new Error('没有可用的 Node.js 镜像，且无法从网络下载。请检查网络连接或手动拉取 node:18-alpine 镜像。');
+                            throw new Error('没有可用的 Node.js 镜像，且无法从网络下载。请检查网络连接或手动拉取 node:22-alpine 镜像。');
                         }
                     } catch {
-                        throw new Error('没有可用的 Node.js 镜像，且无法从网络下载。请检查网络连接或手动拉取 node:18-alpine 镜像。');
+                        throw new Error('没有可用的 Node.js 镜像，且无法从网络下载。请检查网络连接或手动拉取 node:22-alpine 镜像。');
                     }
                 }
             }
@@ -422,7 +422,7 @@ CMD ["tail", "-f", "/dev/null"]
 // 默认的运行配置
 export const DEFAULT_CONFIGS = {
     nextjs: {
-        image: "node:18",
+        image: "node:22",
         command: 'bash -c "npm install --silent && npm run dev"',
         ports: ["3001:3001"],
         environment: {
@@ -430,7 +430,7 @@ export const DEFAULT_CONFIGS = {
         }
     },
     react: {
-        image: "node:18",
+        image: "node:22",
         command: 'bash -c "npm install --silent && npm start"',
         ports: ["3001:3000"],
         environment: {

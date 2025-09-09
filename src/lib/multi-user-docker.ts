@@ -26,7 +26,7 @@ export class MultiUserDockerManager {
     private containers: Map<string, UserContainer> = new Map();
     private portCounter = 3001;
     private maxContainers = 50; // 最大容器数量
-    private baseImageName = 'node:18-alpine';
+    private baseImageName = 'node:22-alpine';
     private sandboxBasePath = '/tmp/sandboxes'; // 沙箱基础路径
 
     constructor() {

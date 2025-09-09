@@ -2,8 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  basePath: '/sandbox',
-  assetPrefix: '/sandbox',
+  // 配置sandbox项目的静态资源路径，避免与主应用冲突
+  assetPrefix: '/sandbox-assets',
+  output: 'standalone',
   images: {
     remotePatterns: [
       {

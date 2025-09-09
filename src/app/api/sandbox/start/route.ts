@@ -36,6 +36,51 @@ export async function POST() {
             });
         }
 
+        // 先检查是否需要安装依赖
+        const packageJsonPath = path.join(sandboxPath, 'package.json');
+        const nodeModulesPath = path.join(sandboxPath, 'node_modules');
+
+        let needsInstall = false;
+        try {
+            await fs.access(packageJsonPath);
+            try {
+                await fs.access(nodeModulesPath);
+            } catch {
+                needsInstall = true;
+            }
+        } catch {
+            return NextResponse.json({
+                success: false,
+                error: 'package.json 文件不存在，请先初始化项目'
+            }, { status: 400 });
+        }
+
+        // 如果需要安装依赖，先执行 npm install
+        if (needsInstall) {
+            console.log('📦 检测到缺少 node_modules，正在安装依赖...');
+            try {
+                const { stdout: installOutput, stderr: installError } = await execAsync('cd sandbox && npm install --silent', {
+                    timeout: 120000 // 2分钟超时
+                });
+
+                if (installError && !installOutput) {
+                    console.error('依赖安装失败:', installError);
+                    return NextResponse.json({
+                        success: false,
+                        error: `依赖安装失败: ${installError}`
+                    }, { status: 500 });
+                }
+
+                console.log('✅ 依赖安装完成');
+            } catch (installError: any) {
+                console.error('依赖安装过程出错:', installError);
+                return NextResponse.json({
+                    success: false,
+                    error: `依赖安装失败: ${installError.message}`
+                }, { status: 500 });
+            }
+        }
+
         // 启动开发服务器
         const startCommand = 'cd sandbox && npm run dev';
 

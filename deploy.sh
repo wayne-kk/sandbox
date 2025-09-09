@@ -5,12 +5,25 @@ echo "🚀 V0 Sandbox 一键部署脚本..."
 # 设置错误时退出
 set -e
 
-# 检查是否有快速启动参数
+# 检查启动参数
 QUICK_START=false
-if [ "$1" = "--quick" ] || [ "$1" = "-q" ]; then
-    QUICK_START=true
-    echo "⚡ 快速启动模式 - 跳过Docker配置和镜像拉取"
-fi
+FAST_DEPLOY=false
+NO_BUILD=false
+
+case "$1" in
+    "--quick"|"-q")
+        QUICK_START=true
+        echo "⚡ 快速启动模式 - 跳过Docker配置和镜像拉取"
+        ;;
+    "--fast"|"-f")
+        FAST_DEPLOY=true
+        echo "🚀 极速部署模式 - 跳过所有非必要步骤"
+        ;;
+    "--no-build"|"-n")
+        NO_BUILD=true
+        echo "⚡ 跳过构建模式 - 直接启动现有镜像"
+        ;;
+esac
 
 # 颜色输出
 RED='\033[0;31m'
@@ -157,7 +170,7 @@ if [ "$QUICK_START" = false ]; then
     IMAGES=(
         "redis:7-alpine"
         "nginx:alpine"
-        "node:18-alpine"
+        "node:22-alpine"
     )
 
     echo -e "${YELLOW}📋 需要拉取的镜像:${NC}"
@@ -279,18 +292,36 @@ mkdir -p data logs
 # 7. 构建并启动服务
 echo -e "${YELLOW}🔨 构建并启动服务...${NC}"
 
-# 检查是否需要重新构建
-if [[ "$1" == "--no-build" || "$1" == "-n" ]]; then
-    echo -e "${YELLOW}⚡ 跳过重新构建，直接启动服务...${NC}"
+if [ "$FAST_DEPLOY" = true ]; then
+    # 极速部署：直接启动，不构建
+    echo -e "${YELLOW}🚀 极速部署：直接启动现有镜像...${NC}"
+    # 检查镜像是否存在
+    if docker images | grep -q "v0-sandbox-app"; then
+        docker compose up -d
+    else
+        echo -e "${YELLOW}⚠️  镜像不存在，切换到快速构建模式...${NC}"
+        docker compose build --build-arg NODE_ENV=development --build-arg BUILD_TARGET=dev
+        docker compose up -d
+    fi
+elif [ "$NO_BUILD" = true ]; then
+    # 跳过构建模式
+    echo -e "${YELLOW}⚡ 跳过构建，直接启动服务...${NC}"
     docker compose up -d
 elif [[ "$1" == "--dev" || "$1" == "-d" ]]; then
+    # 开发模式
     echo -e "${YELLOW}🔧 开发模式：使用Volume挂载，代码修改立即生效...${NC}"
-    echo -e "${YELLOW}💡 注意：开发模式下代码修改会立即生效，无需重新构建${NC}"
     docker compose up -d
 else
-    # 强制重新构建，不使用缓存，确保代码更新生效
-    echo -e "${YELLOW}🔄 强制重新构建镜像...${NC}"
-    docker compose build --no-cache
+    # 生产环境构建
+    if [ "$QUICK_START" = true ]; then
+        echo -e "${YELLOW}🔄 快速构建镜像（开发模式）...${NC}"
+        # 使用开发模式构建
+        BUILD_TARGET=development docker compose build
+    else
+        echo -e "${YELLOW}🔄 完整构建镜像（生产环境）...${NC}"
+        # 使用生产模式构建
+        BUILD_TARGET=production docker compose build --no-cache
+    fi
     echo -e "${YELLOW}🚀 启动服务...${NC}"
     docker compose up -d
 fi
@@ -465,6 +496,7 @@ echo -e "${YELLOW}   # 注意：Sandbox项目现在通过Nginx代理访问，无
 echo -e "${GREEN}📚 使用说明:${NC}"
 echo -e "${GREEN}   - 完整部署: ./deploy.sh${NC}"
 echo -e "${GREEN}   - 快速启动: ./deploy.sh --quick 或 ./deploy.sh -q${NC}"
+echo -e "${GREEN}   - 极速部署: ./deploy.sh --fast 或 ./deploy.sh -f (最快，跳过所有非必要步骤)${NC}"
 echo -e "${GREEN}   - 开发模式: ./deploy.sh --dev 或 ./deploy.sh -d (代码修改立即生效)${NC}"
 echo -e "${GREEN}   - 跳过构建: ./deploy.sh --no-build 或 ./deploy.sh -n${NC}"
 echo -e "${GREEN}   - 网络诊断: ./diagnose-network.sh${NC}"
