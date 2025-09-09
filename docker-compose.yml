@@ -20,7 +20,7 @@ services:
     env_file:
       - .env.local
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL:-file:./data/prod.db}
       - DIFY_API_KEY=${DIFY_API_KEY:-}
       - DIFY_API_ENDPOINT=${DIFY_API_ENDPOINT:-http://152.136.41.186:32422/v1/workflows/run}

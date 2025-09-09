@@ -43,7 +43,7 @@ RUN npx prisma generate
 RUN mkdir -p /app/data
 
 # 设置环境变量
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 EXPOSE 3000
 ENV PORT=3000
@@ -53,5 +53,8 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000/api/health || exit 1
 
-# 启动开发服务器
-CMD ["npm", "run", "dev"]
+# 构建生产版本
+RUN npm run build
+
+# 启动生产服务器
+CMD ["npm", "start"]
