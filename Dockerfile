@@ -17,7 +17,7 @@ RUN npm config set registry https://registry.npmmirror.com/
 COPY package.json package-lock.json* ./
 
 # 安装依赖
-RUN npm ci --only=production
+RUN npm install
 
 # 复制源代码
 COPY . .
