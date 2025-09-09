@@ -48,11 +48,14 @@ COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
 
-# 只安装生产依赖
+# 复制package文件并安装生产依赖
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production --silent && \
+RUN npm ci --omit=dev --silent && \
     npm cache clean --force && \
     rm -rf /tmp/*
+
+# 创建数据目录
+RUN mkdir -p /app/data
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
