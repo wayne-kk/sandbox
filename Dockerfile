@@ -1,17 +1,25 @@
-# 简化版 Dockerfile - 开发环境
+# 稳定版 Dockerfile - 开发环境
 FROM node:22-alpine
 
 # 安装必要的系统依赖
-RUN apk add --no-cache libc6-compat curl openssl
+RUN apk add --no-cache libc6-compat curl openssl python3 make g++
 
 WORKDIR /app
+
+# 设置npm配置
+RUN npm config set registry https://registry.npmmirror.com/ && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-retries 5
 
 # 复制 package 文件
 COPY package.json package-lock.json* ./
 
-# 清理npm缓存并安装依赖
-RUN npm cache clean --force && \
-    npm install --include=dev
+# 分步安装依赖，增加重试机制
+RUN npm cache clean --force
+RUN npm install --include=dev --verbose --no-optional || \
+    (sleep 10 && npm install --include=dev --verbose --no-optional) || \
+    (sleep 20 && npm install --include=dev --verbose --no-optional)
 
 # 复制源代码
 COPY . .
