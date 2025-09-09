@@ -21,7 +21,7 @@ export class IframeOptimizedDockerManager {
     private containers: Map<string, IframeContainer> = new Map();
     private nginxConfigPath = '/tmp/nginx-iframe.conf';
     private maxContainers = 500; // 针对iframe优化的限制
-    private baseImageName = 'node:18-alpine';
+    private baseImageName = 'node:22-alpine';
     private sandboxBasePath = '/tmp/sandboxes';
     private mainAppPort = 3000; // 主应用端口
 

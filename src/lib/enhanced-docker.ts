@@ -159,8 +159,8 @@ export class EnhancedDockerManager extends EventEmitter {
         // 确保项目目录存在
         await fs.mkdir(projectPath, { recursive: true });
 
-        // 尝试使用node:18-alpine镜像
-        let imageToUse = 'node:18-alpine';
+        // 尝试使用node:22-alpine镜像
+        let imageToUse = 'node:22-alpine';
 
         try {
             // 检查镜像是否存在，不存在则拉取

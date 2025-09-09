@@ -170,7 +170,7 @@ if [ "$QUICK_START" = false ]; then
     IMAGES=(
         "redis:7-alpine"
         "nginx:alpine"
-        "node:18-alpine"
+        "node:22-alpine"
     )
 
     echo -e "${YELLOW}📋 需要拉取的镜像:${NC}"
