@@ -24,6 +24,8 @@ COPY package.json package-lock.json* ./
 
 # 分步安装依赖，增加重试机制
 RUN npm cache clean --force
+# 删除package-lock.json以确保使用最新的依赖版本
+RUN rm -f package-lock.json
 RUN npm install --include=dev --verbose --no-optional || \
     (sleep 10 && npm install --include=dev --verbose --no-optional) || \
     (sleep 20 && npm install --include=dev --verbose --no-optional)
