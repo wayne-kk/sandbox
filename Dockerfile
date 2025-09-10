@@ -98,4 +98,4 @@ USER nextjs
 RUN npx prisma generate || true
 
 EXPOSE 3100
-CMD ["pnpm", "run", "dev"]
+# CMD 由 docker-compose.yml 中的 command 覆盖
