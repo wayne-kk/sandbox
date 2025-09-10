@@ -1,8 +1,6 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  // 设置基础路径和静态资源前缀，确保与主应用隔离
   images: {
     remotePatterns: [
       {
@@ -12,23 +10,20 @@ const nextConfig: NextConfig = {
       {
         protocol: 'http',
         hostname: '**',
-      }
+      },
     ],
     unoptimized: true,
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['*'],
+      allowedOrigins: ['wayne.beer', 'sandbox.wayne.beer'], // 限制为特定域名
     },
   },
-  // 配置开发服务器
   devIndicators: {
     buildActivity: false,
   },
-  // 禁用HMR以避免WebSocket问题
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
-      // 禁用HMR
       config.watchOptions = {
         poll: 1000,
         aggregateTimeout: 300,
@@ -44,7 +39,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: '*',
+            value: 'https://wayne.beer, https://sandbox.wayne.beer', // 限制为特定域名
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -54,14 +49,14 @@ const nextConfig: NextConfig = {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type, Authorization',
           },
-          // 允许iframe嵌入
+          // 使用 CSP 替代 X-Frame-Options，允许 iframe 嵌入
           {
-            key: 'X-Frame-Options',
-            value: 'ALLOWALL',
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self' https://wayne.beer https://sandbox.wayne.beer",
           },
         ],
       },
-    ]
+    ];
   },
 };
 
