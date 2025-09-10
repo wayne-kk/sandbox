@@ -48,12 +48,24 @@ export default function AIPipelinePage() {
   const [historyScenes, setHistoryScenes] = useState<any[]>([]);
   const [selectedHistoryScene, setSelectedHistoryScene] = useState<any>(null);
   const [historyComponents, setHistoryComponents] = useState<any[]>([]);
+  const [selectedHistoryComponent, setSelectedHistoryComponent] = useState<any>(null);
   const [isLoadingScenes, setIsLoadingScenes] = useState(false);
   const [isLoadingComponents, setIsLoadingComponents] = useState(false);
   const [isDownloadingHistory, setIsDownloadingHistory] = useState(false);
   
-  // Mock模式开关 (开发时可以设置为true)
-  const [useMockData, setUseMockData] = useState(true);
+  // 历史组件修改表单状态
+  const [historyComponentForm, setHistoryComponentForm] = useState({
+    scene_tag: '',
+    scene_en: '',
+    component_name: '',
+    stype_tag: '',
+    function_tag: '',
+    component_desc: '',
+    applied_components: '',
+    applicable_pages: ''
+  });
+  const [historyUploadFile, setHistoryUploadFile] = useState<File | null>(null);
+  
 
   // Pipeline 状态
   const [pipelineStatus, setPipelineStatus] = useState({
@@ -126,80 +138,20 @@ export default function AIPipelinePage() {
   const createTemplateByScene = async (scene: string, scene_en?: string) => {
     setIsCreatingTemplate(true);
     try {
-      // Mock 数据模式
-      if (useMockData) {
-        // 模拟网络延迟
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // 根据场景生成mock模板数据
-        const generateMockTemplates = (sceneName: string, sceneEn?: string) => {
-          const baseTemplates = [
-            {
-              id: `template_1_${Date.now()}`,
-              component_name: `${sceneName}MainLayout`,
-              component_desc: `${sceneName}的主要布局组件，提供整体页面结构`,
-              scene_tag: sceneName,
-              stype_tag: '布局框架',
-              function_tag: '结构化',
-              applied_components: 'Header, Sidebar, Content, Footer',
-              applicable_pages: '主页面、详情页面'
-            },
-            {
-              id: `template_2_${Date.now()}`,
-              component_name: `${sceneName}DataDisplay`,
-              component_desc: `${sceneName}的数据展示组件，支持各种数据格式展示`,
-              scene_tag: sceneName,
-              stype_tag: '信息展示',
-              function_tag: '数据驱动',
-              applied_components: 'Table, Card, List, Badge',
-              applicable_pages: '列表页、详情页'
-            },
-            {
-              id: `template_3_${Date.now()}`,
-              component_name: `${sceneName}ActionPanel`,
-              component_desc: `${sceneName}的操作面板组件，集成常用操作功能`,
-              scene_tag: sceneName,
-              stype_tag: '交互操作',
-              function_tag: '功能集成',
-              applied_components: 'Button, Form, Modal, Dropdown',
-              applicable_pages: '操作页面、设置页面'
-            },
-            {
-              id: `template_4_${Date.now()}`,
-              component_name: `${sceneName}StatusIndicator`,
-              component_desc: `${sceneName}的状态指示器组件，显示实时状态信息`,
-              scene_tag: sceneName,
-              stype_tag: '状态展示',
-              function_tag: '实时更新',
-              applied_components: 'Badge, Progress, Alert, Icon',
-              applicable_pages: '监控页面、状态页面'
-            }
-          ];
-          
-          return baseTemplates;
-        };
-        
-        const templateData = generateMockTemplates(scene, scene_en);
-        setTemplates(templateData);
-        showSuccessNotification('模板创建成功！', `${templateData.length} 个组件模板已生成 (Mock数据)`);
-        return templateData;
-      }
-      
-      // 真实 API 调用
-      const requestBody: { scene: string; scene_en?: string } = { scene };
+      const formData = new FormData();
+      formData.append('scene', scene);
       if (scene_en && scene_en.trim()) {
-        requestBody.scene_en = scene_en;
+        formData.append('scene_en', scene_en);
       }
       
-      const response = await fetch('/api/frontend_component/create_by_scene', {
+      const response = await fetch('http://127.0.0.1:7902/frontend_component/create_by_scene', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: formData
       });
 
       const data = await response.json();
       
-      if (data.status === "0") {
+      if (data.status == 0) {
         // 解析返回的模板数据
         const templateData = data.data.data.map((item: any[], index: number) => {
           const keys = data.data.keys;
@@ -219,14 +171,6 @@ export default function AIPipelinePage() {
       }
     } catch (error) {
       console.error('创建模板错误:', error);
-      
-      // 如果真实API失败，fallback到mock数据
-      if (!useMockData) {
-        console.log('创建模板API调用失败，切换到Mock数据');
-        setUseMockData(true);
-        return await createTemplateByScene(scene, scene_en); // 重新调用使用mock
-      }
-      
       alert('❌ 创建模板失败: ' + error);
       return null;
     } finally {
@@ -238,68 +182,13 @@ export default function AIPipelinePage() {
   const downloadTemplate = async (scene: string, scene_en?: string) => {
     setIsDownloading(true);
     try {
-      // Mock 数据模式 - 模拟下载
-      if (useMockData) {
-        // 模拟下载延迟
-        await new Promise(resolve => setTimeout(resolve, 1800));
-        
-        const filename = `${scene_en || scene}_new_templates.zip`;
-        
-        // 创建模拟的新模板文件内容
-        const mockFileContent = `
-# ${scene} 新生成模板包
-
-这是一个模拟的新生成模板包，包含以下组件：
-
-## 新生成组件
-- ${scene}MainLayout.tsx - 主布局组件
-- ${scene}DataDisplay.tsx - 数据展示组件  
-- ${scene}ActionPanel.tsx - 操作面板组件
-- ${scene}StatusIndicator.tsx - 状态指示器组件
-
-## 组件特性
-- 响应式设计
-- TypeScript支持
-- 现代化UI风格
-- 完整的交互逻辑
-
-## 安装使用
-\`\`\`bash
-# 安装依赖
-npm install
-
-# 导入组件
-import { ${scene}MainLayout } from './${scene}MainLayout'
-\`\`\`
-
-## 注意事项
-这是基于 "${scene}" 场景自动生成的Mock模板，实际使用时请连接真实后端服务。
-生成时间：${new Date().toLocaleString()}
-        `;
-        
-        // 创建并下载模拟文件
-        const blob = new Blob([mockFileContent], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        
-        showSuccessNotification('下载完成！', `${filename} 已保存到本地 (Mock数据)`);
-        return;
-      }
-      
-      // 真实 API 调用
       const params = new URLSearchParams();
       params.append('scene', scene);
       if (scene_en && scene_en.trim()) {
         params.append('scene_en', scene_en);
       }
       
-      const response = await fetch(`/api/frontend_component/download?${params.toString()}`, {
+      const response = await fetch(`http://127.0.0.1:7902/frontend_component/download?${params.toString()}`, {
         method: 'GET'
       });
 
@@ -327,14 +216,6 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
       }
     } catch (error) {
       console.error('下载模板错误:', error);
-      
-      // 如果真实API失败，提供mock下载
-      if (!useMockData) {
-        console.log('下载API调用失败，使用Mock下载');
-        setUseMockData(true);
-        return await downloadTemplate(scene, scene_en); // 重新调用使用mock
-      }
-      
       alert('❌ 下载模板失败: ' + error);
     } finally {
       setIsDownloading(false);
@@ -376,7 +257,7 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
       formData.append('function_tag', templateForm.function_tag);
       formData.append('file', uploadFile);
 
-      const response = await fetch('/api/frontend_component/modify', {
+      const response = await fetch('http://127.0.0.1:7902/frontend_component/modify', {
         method: 'POST',
         body: formData
       });
@@ -404,7 +285,7 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
   const resetSandbox = async () => {
     setIsResetting(true);
     try {
-      const response = await fetch('/api/sandbox/reset', {
+      const response = await fetch('http://127.0.0.1:7902/api/sandbox/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirmReset: true })
@@ -431,63 +312,14 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
   const getSceneList = async () => {
     setIsLoadingScenes(true);
     try {
-      // Mock 数据模式
-      if (useMockData) {
-        // 模拟网络延迟
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockScenes = [
-          {
-            id: 'scene_1',
-            scene: '电商平台',
-            scene_cn: '电商平台',
-            scene_en: 'e-commerce',
-            description: '包含商品展示、购物车、订单管理等完整的电商功能组件'
-          },
-          {
-            id: 'scene_2',  
-            scene: '后台管理系统',
-            scene_cn: '后台管理系统',
-            scene_en: 'admin-dashboard',
-            description: '数据统计、用户管理、内容管理等后台管理功能组件'
-          },
-          {
-            id: 'scene_3',
-            scene: '数据分析平台',
-            scene_cn: '数据分析平台', 
-            scene_en: 'data-analytics',
-            description: '图表展示、数据可视化、报表生成等分析功能组件'
-          },
-          {
-            id: 'scene_4',
-            scene: '社交媒体应用',
-            scene_cn: '社交媒体应用',
-            scene_en: 'social-media',
-            description: '用户动态、消息聊天、内容分享等社交功能组件'
-          },
-          {
-            id: 'scene_5',
-            scene: '企业官网',
-            scene_cn: '企业官网',
-            scene_en: 'corporate-website', 
-            description: '公司介绍、产品展示、联系我们等企业门户组件'
-          }
-        ];
-        
-        setHistoryScenes(mockScenes);
-        showSuccessNotification('场景列表加载成功！', `找到 ${mockScenes.length} 个历史场景`);
-        return mockScenes;
-      }
-      
-      // 真实 API 调用
-      const response = await fetch('/api/frontend_component/get_scene_list', {
+      const response = await fetch('http://127.0.0.1:7902/frontend_component/get_scene_list', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
 
       const data = await response.json();
       
-      if (data.status === "0") {
+      if (data.status == 0) {
         setHistoryScenes(data.data || []);
         return data.data;
       } else {
@@ -495,14 +327,6 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
       }
     } catch (error) {
       console.error('获取场景列表错误:', error);
-      
-      // 如果真实API失败，fallback到mock数据
-      if (!useMockData) {
-        console.log('API调用失败，切换到Mock数据模式');
-        setUseMockData(true);
-        return await getSceneList(); // 重新调用使用mock数据
-      }
-      
       alert('❌ 获取场景列表失败: ' + error);
       return null;
     } finally {
@@ -514,131 +338,19 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
   const queryComponentsByScene = async (scene_en: string) => {
     setIsLoadingComponents(true);
     try {
-      // Mock 数据模式
-      if (useMockData) {
-        // 模拟网络延迟
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // 根据不同场景返回不同的mock组件数据
-        const getMockComponents = (sceneEn: string) => {
-          const baseComponents = {
-            'e-commerce': [
-              {
-                id: 'comp_ecom_1',
-                component_name: 'ProductCard',
-                component_desc: '商品卡片组件，展示商品图片、价格、名称等基本信息',
-                scene_tag: '电商',
-                stype_tag: '现代简约',
-                function_tag: '展示',
-                applied_components: 'Card, Image, Button',
-                applicable_pages: '商品列表页、首页推荐'
-              },
-              {
-                id: 'comp_ecom_2',
-                component_name: 'ShoppingCart',
-                component_desc: '购物车组件，支持商品数量修改、删除、价格计算',
-                scene_tag: '电商',
-                stype_tag: '交互式',
-                function_tag: '功能',
-                applied_components: 'List, Counter, Button',
-                applicable_pages: '购物车页面、结算页面'
-              },
-              {
-                id: 'comp_ecom_3',
-                component_name: 'OrderSummary',
-                component_desc: '订单摘要组件，显示订单详情和总金额',
-                scene_tag: '电商',
-                stype_tag: '清晰明了',
-                function_tag: '信息展示',
-                applied_components: 'Card, List, Typography',
-                applicable_pages: '订单确认页、订单详情页'
-              }
-            ],
-            'admin-dashboard': [
-              {
-                id: 'comp_admin_1',
-                component_name: 'DataChart',
-                component_desc: '数据图表组件，支持柱状图、折线图、饼图等多种类型',
-                scene_tag: '管理后台',
-                stype_tag: '专业商务',
-                function_tag: '数据可视化',
-                applied_components: 'Chart, Legend, Tooltip',
-                applicable_pages: '仪表板、数据分析页'
-              },
-              {
-                id: 'comp_admin_2',
-                component_name: 'UserTable',
-                component_desc: '用户管理表格，支持搜索、排序、分页和批量操作',
-                scene_tag: '管理后台',
-                stype_tag: '功能完整',
-                function_tag: '数据管理',
-                applied_components: 'Table, SearchBox, Pagination',
-                applicable_pages: '用户管理页、权限管理页'
-              }
-            ],
-            'data-analytics': [
-              {
-                id: 'comp_data_1',
-                component_name: 'KPICard',
-                component_desc: 'KPI指标卡片，展示关键业务指标和变化趋势',
-                scene_tag: '数据分析',
-                stype_tag: '直观简洁',
-                function_tag: '指标展示',
-                applied_components: 'Card, Number, Trend',
-                applicable_pages: '数据大屏、分析报告'
-              },
-              {
-                id: 'comp_data_2',
-                component_name: 'FilterPanel',
-                component_desc: '数据筛选面板，支持多维度条件筛选和时间范围选择',
-                scene_tag: '数据分析',
-                stype_tag: '交互友好',
-                function_tag: '数据筛选',
-                applied_components: 'Select, DatePicker, CheckBox',
-                applicable_pages: '分析页面、报表页面'
-              }
-            ]
-          };
-          
-          return baseComponents[sceneEn as keyof typeof baseComponents] || [
-            {
-              id: 'comp_default_1',
-              component_name: 'GenericComponent',
-              component_desc: `${sceneEn}场景下的通用组件，提供基础功能`,
-              scene_tag: sceneEn,
-              stype_tag: '通用',
-              function_tag: '基础',
-              applied_components: 'div, span, button',
-              applicable_pages: '通用页面'
-            }
-          ];
-        };
-        
-        const componentData = getMockComponents(scene_en);
-        setHistoryComponents(componentData);
-        showSuccessNotification('组件列表加载成功！', `找到 ${componentData.length} 个组件`);
-        return componentData;
-      }
-      
-      // 真实 API 调用
-      const response = await fetch(`/api/frontend_component/query_by_scene?scene_en=${encodeURIComponent(scene_en)}`, {
+      const response = await fetch(`http://127.0.0.1:7902/frontend_component/query_by_scene?scene_en=${encodeURIComponent(scene_en)}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
 
       const data = await response.json();
       
-      if (data.status === "0") {
-        // 解析返回的组件数据，格式与模板数据相同
-        const componentData = data.data.data?.map((item: any[], index: number) => {
-          const keys = data.data.keys;
-          const component: any = {};
-          keys.forEach((key: string, keyIndex: number) => {
-            component[key] = item[keyIndex];
-          });
-          component.id = `history_component_${index}_${Date.now()}`;
-          return component;
-        }) || [];
+      if (data.status == 0) {
+        // 解析返回的组件数据，直接使用数组结构
+        const componentData = data.data?.map((component: any, index: number) => ({
+          ...component,
+          id: `history_component_${index}_${Date.now()}`
+        })) || [];
         
         setHistoryComponents(componentData);
         return componentData;
@@ -647,14 +359,6 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
       }
     } catch (error) {
       console.error('查询组件列表错误:', error);
-      
-      // 如果真实API失败，fallback到mock数据
-      if (!useMockData) {
-        console.log('API调用失败，切换到Mock数据模式');
-        setUseMockData(true);
-        return await queryComponentsByScene(scene_en); // 重新调用使用mock数据
-      }
-      
       alert('❌ 查询组件列表失败: ' + error);
       return null;
     } finally {
@@ -666,59 +370,13 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
   const downloadHistoryScene = async (scene: string, scene_en?: string) => {
     setIsDownloadingHistory(true);
     try {
-      // Mock 数据模式 - 模拟下载
-      if (useMockData) {
-        // 模拟下载延迟
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const filename = `${scene_en || scene}_templates.zip`;
-        
-        // 创建一个模拟的zip文件内容
-        const mockFileContent = `
-# ${scene} 场景组件包
-
-这是一个模拟的组件包，包含以下文件：
-
-## 组件列表
-- ${scene_en || scene}-components/
-  - ProductCard.tsx
-  - ShoppingCart.tsx  
-  - OrderSummary.tsx
-  - README.md
-  - package.json
-
-## 使用说明
-1. 解压文件到项目目录
-2. 运行 npm install 安装依赖
-3. 按需引入组件使用
-
-## 注意事项
-这是mock数据，实际使用时请连接真实后端服务。
-        `;
-        
-        // 创建并下载模拟文件
-        const blob = new Blob([mockFileContent], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        
-        showSuccessNotification('下载完成！', `${filename} 已保存到本地 (Mock数据)`);
-        return;
-      }
-      
-      // 真实 API 调用
       const params = new URLSearchParams();
       params.append('scene', scene);
       if (scene_en && scene_en.trim()) {
         params.append('scene_en', scene_en);
       }
       
-      const response = await fetch(`/api/frontend_component/download?${params.toString()}`, {
+      const response = await fetch(`http://127.0.0.1:7902/frontend_component/download?${params.toString()}`, {
         method: 'GET'
       });
 
@@ -746,14 +404,6 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
       }
     } catch (error) {
       console.error('下载历史场景错误:', error);
-      
-      // 如果真实API失败，提供mock下载
-      if (!useMockData) {
-        console.log('下载API调用失败，使用Mock下载');
-        setUseMockData(true);
-        return await downloadHistoryScene(scene, scene_en); // 重新调用使用mock
-      }
-      
       alert('❌ 下载历史场景失败: ' + error);
     } finally {
       setIsDownloadingHistory(false);
@@ -764,10 +414,95 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
   const handleSelectHistoryScene = async (scene: any) => {
     setSelectedHistoryScene(scene);
     setHistoryComponents([]); // 清空之前的组件列表
+    setSelectedHistoryComponent(null); // 清空选中的组件
+    clearHistoryComponentForm(); // 清空组件修改表单
     
     // 获取该场景下的组件列表
     if (scene.scene_en) {
       await queryComponentsByScene(scene.scene_en);
+    }
+  };
+
+  // 处理历史组件选中
+  const handleSelectHistoryComponent = (component: any) => {
+    setSelectedHistoryComponent(component);
+    // 自动填充表单信息，场景标签和英文标识优先使用当前选中的历史场景
+    setHistoryComponentForm({
+      scene_tag: selectedHistoryScene?.scene_en || selectedHistoryScene?.scene || component.scene_tag || '',
+      scene_en: selectedHistoryScene?.scene_en || '',
+      component_name: component.component_name || '',
+      stype_tag: component.stype_tag || '',
+      function_tag: component.function_tag || '',
+      component_desc: component.component_desc || '',
+      applied_components: component.applied_components || '',
+      applicable_pages: component.applicable_pages || ''
+    });
+  };
+
+  // 清除选中的历史组件
+  const clearHistoryComponentForm = () => {
+    setSelectedHistoryComponent(null);
+    setHistoryComponentForm({
+      scene_tag: '',
+      scene_en: '',
+      component_name: '',
+      stype_tag: '',
+      function_tag: '',
+      component_desc: '',
+      applied_components: '',
+      applicable_pages: ''
+    });
+    setHistoryUploadFile(null);
+  };
+
+  // 保存历史组件修改
+  const saveHistoryComponentChanges = async () => {
+    if (!selectedHistoryComponent || !historyComponentForm.component_name.trim()) {
+      alert('请填写组件名称');
+      return;
+    }
+
+    if (!historyUploadFile) {
+      alert('请选择要上传的模板文件');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      // 使用当前选中历史场景的scene_en作为场景参数
+      formData.append('scene', selectedHistoryScene?.scene_en || selectedHistoryScene?.scene || historyComponentForm.scene_tag || '');
+      formData.append('scene_en', historyComponentForm.scene_en);
+      formData.append('component_name', historyComponentForm.component_name);
+      formData.append('stype_tag', historyComponentForm.stype_tag);
+      formData.append('function_tag', historyComponentForm.function_tag);
+      formData.append('file', historyUploadFile);
+
+      const response = await fetch('http://127.0.0.1:7902/frontend_component/update_by_name', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        showSuccessNotification('组件修改成功！', '历史组件模板已更新');
+        
+        // 更新本地组件列表中的数据
+        const updatedComponents = historyComponents.map(comp => 
+          comp.id === selectedHistoryComponent.id 
+            ? { ...comp, ...historyComponentForm }
+            : comp
+        );
+        setHistoryComponents(updatedComponents);
+        
+        // 清空表单
+        clearHistoryComponentForm();
+      } else {
+        throw new Error(data.error || '修改组件失败');
+      }
+    } catch (error) {
+      console.error('保存历史组件修改失败:', error);
+      alert('❌ 保存修改失败: ' + error);
     }
   };
 
@@ -833,26 +568,6 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
             </div>
             
             <div className="flex items-center space-x-3">
-              {/* Mock模式切换开关 */}
-              <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-lg">
-                <span className="text-xs text-gray-600">Mock数据</span>
-                <button
-                  onClick={() => setUseMockData(!useMockData)}
-                  className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${
-                    useMockData ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
-                  title={useMockData ? '点击切换到真实API' : '点击切换到Mock数据'}
-                >
-                  <span
-                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                      useMockData ? 'translate-x-4' : 'translate-x-0.5'
-                    }`}
-                  />
-                </button>
-                <span className={`text-xs ${useMockData ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
-                  {useMockData ? 'ON' : 'OFF'}
-                </span>
-              </div>
               
               <Button
                 onClick={() => setShowResetDialog(true)}
@@ -1393,13 +1108,23 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
                           {historyComponents.map((component: any, index) => (
                             <div 
                               key={component.id || index}
-                              className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 hover:shadow-md transition-all duration-200"
+                              onClick={() => handleSelectHistoryComponent(component)}
+                              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                                selectedHistoryComponent?.id === component.id
+                                  ? 'border-blue-500 bg-blue-50 shadow-lg transform scale-105'
+                                  : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                              }`}
                             >
                               <div className="flex items-start justify-between mb-3">
                                 <h4 className="font-semibold text-gray-900">{component.component_name}</h4>
-                                <Badge variant="outline" className="text-xs">
-                                  {component.scene_tag}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {component.scene_tag || 'N/A'}
+                                  </Badge>
+                                  {selectedHistoryComponent?.id === component.id && (
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                  )}
+                                </div>
                               </div>
                               
                               <p className="text-sm text-gray-600 mb-3 line-clamp-2">
@@ -1414,14 +1139,147 @@ import { ${scene}MainLayout } from './${scene}MainLayout'
                                   <span className="font-medium">适用页面:</span> {component.applicable_pages}
                                 </div>
                                 <div className="flex gap-2">
-                                  <Badge variant="secondary" className="text-xs">{component.stype_tag}</Badge>
-                                  <Badge variant="secondary" className="text-xs">{component.function_tag}</Badge>
+                                  {component.stype_tag && (
+                                    <Badge variant="secondary" className="text-xs">{component.stype_tag}</Badge>
+                                  )}
+                                  {component.function_tag && (
+                                    <Badge variant="secondary" className="text-xs">{component.function_tag}</Badge>
+                                  )}
                                 </div>
                               </div>
                             </div>
                           ))}
                         </div>
                       )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 条件显示的历史组件修改表单 */}
+                {selectedHistoryComponent && (
+                  <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 animate-in slide-in-from-bottom-2 duration-300">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Edit3 className="w-5 h-5 text-green-600" />
+                          <CardTitle>历史组件修改</CardTitle>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={clearHistoryComponentForm}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                      <CardDescription>
+                        正在编辑: <span className="font-semibold text-green-600">{selectedHistoryComponent.component_name}</span> - 修改组件的详细信息、标签并上传新的模板文件
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            组件名称 <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={historyComponentForm.component_name}
+                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, component_name: e.target.value}))}
+                            placeholder="组件名称"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            场景标签 <span className="text-gray-400">(自动填充)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={historyComponentForm.scene_tag}
+                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, scene_tag: e.target.value}))}
+                            placeholder="场景标签"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm bg-gray-50"
+                            readOnly
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            场景英文标识 <span className="text-gray-400">(自动填充)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={historyComponentForm.scene_en}
+                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, scene_en: e.target.value}))}
+                            placeholder="场景英文标识"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm bg-gray-50"
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            风格标签 <span className="text-green-600">(可修改)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={historyComponentForm.stype_tag}
+                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, stype_tag: e.target.value}))}
+                            placeholder="现代简约, 商务风格..."
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            功能标签 <span className="text-green-600">(可修改)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={historyComponentForm.function_tag}
+                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, function_tag: e.target.value}))}
+                            placeholder="交互性, 数据展示..."
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          模板文件 <span className="text-red-500">*</span> <span className="text-green-600">(支持 .zip, .tsx, .ts, .jsx, .js 文件)</span>
+                        </label>
+                        <input
+                          type="file"
+                          accept=".zip,.tsx,.ts,.jsx,.js"
+                          onChange={(e) => setHistoryUploadFile(e.target.files?.[0] || null)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        />
+                        {historyUploadFile && (
+                          <div className="mt-2 text-xs text-gray-600">
+                            已选择文件: <span className="font-medium">{historyUploadFile.name}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex gap-3 pt-4">
+                        <Button
+                          onClick={saveHistoryComponentChanges}
+                          disabled={!historyComponentForm.component_name.trim() || !historyUploadFile}
+                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          保存修改
+                        </Button>
+                        <Button
+                          onClick={clearHistoryComponentForm}
+                          variant="outline"
+                          className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                        >
+                          取消编辑
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 )}
