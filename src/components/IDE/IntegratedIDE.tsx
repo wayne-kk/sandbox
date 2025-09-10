@@ -5,12 +5,12 @@ import { Editor } from '@monaco-editor/react';
 import { MonacoConfig } from '@/lib/monaco-config';
 import EnhancedTerminal from '@/components/Terminal/EnhancedTerminal';
 import { useProjectWebSocket } from '@/hooks/useProjectWebSocket';
-import { 
-  Play, 
-  Code, 
-  Eye, 
-  RefreshCw, 
-  ExternalLink, 
+import {
+  Play,
+  Code,
+  Eye,
+  RefreshCw,
+  ExternalLink,
   Settings,
   FileText,
   FolderTree,
@@ -65,30 +65,30 @@ export default function IntegratedIDE({
   const [openTabs, setOpenTabs] = useState<FileTab[]>([]);
   const [activeFile, setActiveFile] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // 文件树状态
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['src', 'public']));
-  
+
   // WebSocket状态管理
   const wsState = useProjectWebSocket(projectId);
-  
+
   // 预览相关状态
   const [previewKey, setPreviewKey] = useState(0);
   const [showBuildLog, setShowBuildLog] = useState(false);
   const [lastUrl, setLastUrl] = useState('');
-  
+
   // 从WebSocket状态中获取项目状态
   const projectStatus = wsState.status;
   const previewUrl = wsState.url;
   const buildLog = wsState.logs;
-  
+
   // UI状态
   const [showStatusInfo, setShowStatusInfo] = useState(false);
-  
+
   // 重置功能状态
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const buildLogRef = useRef<HTMLDivElement>(null);
 
@@ -104,7 +104,7 @@ export default function IntegratedIDE({
     } catch (error) {
       console.error('Failed to load sandbox files:', error);
     }
-    
+
     // 如果API失败，返回基本的示例文件
     return {
       'src/app/page.tsx': `import { useState } from 'react';
@@ -194,10 +194,10 @@ export default function Home() {
     if (previewUrl && previewUrl !== lastUrl) {
       console.log(`🔄 预览URL变化: ${lastUrl} → ${previewUrl}`);
       setLastUrl(previewUrl);
-      
+
       // 强制刷新iframe
       setPreviewKey(prev => prev + 1);
-      
+
       // 如果项目正在运行且有新URL，自动切换到预览标签
       if (projectStatus === 'running' && activeTab !== 'preview') {
         setTimeout(() => {
@@ -281,7 +281,7 @@ export default function Home() {
   // 更新文件内容
   const updateFileContent = (filePath: string, content: string) => {
     setFiles(prev => ({ ...prev, [filePath]: content }));
-    setOpenTabs(prev => prev.map(tab => 
+    setOpenTabs(prev => prev.map(tab =>
       tab.path === filePath ? { ...tab, content, isDirty: tab.content !== content } : tab
     ));
   };
@@ -289,7 +289,7 @@ export default function Home() {
   // 保存文件
   const saveFiles = useCallback(async () => {
     if (!isUserProject) return;
-    
+
     setIsSaving(true);
     try {
       // 如果是用户项目，保存到数据库
@@ -303,7 +303,7 @@ export default function Home() {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setOpenTabs(prev => prev.map(tab => ({ ...tab, isDirty: false })));
         addBuildLog('✅ 文件保存成功');
@@ -337,36 +337,28 @@ export default function Home() {
       await saveFiles();
       addBuildLog('📝 文件已保存');
 
-      // 调用API启动项目
-      const response = await fetch('/api/project', {
+      // 调用API启动项目 - 使用sandbox启动API
+      const response = await fetch('/api/sandbox/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'start',
-          projectId,
-          files,
-          framework
-        })
+        headers: { 'Content-Type': 'application/json' }
       });
 
       const data = await response.json();
 
       if (data.success) {
-        addBuildLog('✅ 项目启动成功！');
-        addBuildLog('🔗 等待预览服务器响应...');
-        
-        // 不再手动设置previewKey，让WebSocket状态更新来触发
-        // setPreviewKey(prev => prev + 1);
-        
-        // 延迟自动切换到预览标签，给WebSocket更多时间同步状态
+        addBuildLog('✅ Sandbox服务器启动成功！');
+        addBuildLog(`🔗 预览地址: ${data.url}`);
+
+        // 使用WebSocket状态管理，不需要手动设置状态
+        // 预览URL和状态由WebSocket自动管理
+
+        // 延迟自动切换到预览标签
         setTimeout(() => {
-          if (wsState.status === 'running' && wsState.url) {
-            addBuildLog('🌐 预览已就绪，自动切换到预览标签');
-            setActiveTab('preview');
-          }
+          addBuildLog('🌐 预览已就绪，自动切换到预览标签');
+          setActiveTab('preview');
         }, 2000);
       } else {
-        throw new Error(data.error || '启动失败');
+        throw new Error(data.error || 'Sandbox启动失败');
       }
 
     } catch (error) {
@@ -405,13 +397,13 @@ export default function Home() {
     setIsResetting(true);
     try {
       addBuildLog('🔄 开始重置sandbox...');
-      
+
       // 先停止项目
       if (projectStatus === 'running') {
         addBuildLog('⏹️ 停止当前项目...');
         await stopProject();
       }
-      
+
       // 调用重置API
       const response = await fetch('/api/sandbox/reset', {
         method: 'POST',
@@ -424,21 +416,21 @@ export default function Home() {
       if (data.success) {
         addBuildLog('✅ Sandbox重置成功');
         addBuildLog(`📁 已恢复到原始项目模板`);
-        
+
         // 重新加载文件
         const newFiles = await getDefaultFiles();
         setFiles(newFiles);
-        
+
         // 清空打开的标签页
         setOpenTabs([]);
         setActiveFile('');
-        
+
         // 刷新预览
         setPreviewKey(prev => prev + 1);
-        
+
         // 关闭对话框
         setShowResetDialog(false);
-        
+
         addBuildLog('🎉 重置完成，可以开始新的开发了！');
       } else {
         throw new Error(data.error || '重置失败');
@@ -459,7 +451,7 @@ export default function Home() {
       console.log('🔄 手动刷新预览:', previewUrl);
       setPreviewKey(prev => prev + 1);
       addBuildLog(`🔄 正在刷新预览: ${previewUrl}`);
-      
+
       // 强制iframe重新加载
       setTimeout(() => {
         if (iframeRef.current) {
@@ -473,14 +465,14 @@ export default function Home() {
 
   // 文件自动保存 - 只在用户编辑时触发，避免无限循环
   const [lastSaveTime, setLastSaveTime] = useState<number>(0);
-  
+
   useEffect(() => {
     // 检查是否有未保存的文件
     const dirtyTabs = openTabs.filter(tab => tab.isDirty);
-    
+
     if (dirtyTabs.length > 0 && projectStatus === 'running') {
       const now = Date.now();
-      
+
       // 防抖：只在距离上次保存超过2秒时才保存
       if (now - lastSaveTime > 2000) {
         const timer = setTimeout(async () => {
@@ -490,7 +482,7 @@ export default function Home() {
             openTabs.forEach(tab => {
               currentFiles[tab.path] = tab.content;
             });
-            
+
             const response = await fetch('/api/project', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -505,7 +497,7 @@ export default function Home() {
             if (data.success) {
               addBuildLog('📝 文件已自动保存');
               setLastSaveTime(Date.now());
-              
+
               // 标记文件为已保存
               setOpenTabs(prev => prev.map(tab => ({ ...tab, isDirty: false })));
             }
@@ -513,7 +505,7 @@ export default function Home() {
             console.error('自动保存文件错误:', error);
           }
         }, 1000);
-        
+
         return () => clearTimeout(timer);
       }
     }
@@ -524,11 +516,11 @@ export default function Home() {
   // 构建文件树结构
   const buildFileTree = (filePaths: string[]) => {
     const tree: any = {};
-    
+
     filePaths.forEach(path => {
       const parts = path.split('/');
       let current = tree;
-      
+
       parts.forEach((part, index) => {
         if (!current[part]) {
           current[part] = index === parts.length - 1 ? { _isFile: true, _path: path } : {};
@@ -536,7 +528,7 @@ export default function Home() {
         current = current[part];
       });
     });
-    
+
     return tree;
   };
 
@@ -558,17 +550,16 @@ export default function Home() {
     return Object.keys(tree).map(key => {
       const item = tree[key];
       const currentPath = basePath ? `${basePath}/${key}` : key;
-      
+
       if (item._isFile) {
         return (
           <button
             key={currentPath}
             onClick={() => openFile(item._path)}
-            className={`w-full flex items-center gap-2 px-2 py-1 text-sm rounded transition-colors ${
-              activeFile === item._path
-                ? 'bg-blue-100 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
+            className={`w-full flex items-center gap-2 px-2 py-1 text-sm rounded transition-colors ${activeFile === item._path
+              ? 'bg-blue-100 text-blue-700'
+              : 'text-gray-600 hover:bg-gray-100'
+              }`}
             style={{ paddingLeft: `${(level + 1) * 16 + 8}px` }}
           >
             <span>{getFileIcon(item._path)}</span>
@@ -605,7 +596,7 @@ export default function Home() {
   // 点击预览时自动启动项目
   const handlePreviewClick = async () => {
     setActiveTab('preview');
-    
+
     // 如果项目未运行，自动启动
     if (projectStatus === 'stopped') {
       await startProject();
@@ -619,22 +610,20 @@ export default function Home() {
         <div className="flex">
           <button
             onClick={() => setActiveTab('editor')}
-            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'editor'
-                ? 'border-blue-500 text-blue-600 bg-white'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'editor'
+              ? 'border-blue-500 text-blue-600 bg-white'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
             <Code size={16} />
             代码编辑器
           </button>
           <button
             onClick={handlePreviewClick}
-            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'preview'
-                ? 'border-blue-500 text-blue-600 bg-white'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'preview'
+              ? 'border-blue-500 text-blue-600 bg-white'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
             <Eye size={16} />
             实时预览
@@ -644,11 +633,10 @@ export default function Home() {
           </button>
           <button
             onClick={() => setActiveTab('terminal')}
-            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'terminal'
-                ? 'border-blue-500 text-blue-600 bg-white'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'terminal'
+              ? 'border-blue-500 text-blue-600 bg-white'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
             <Terminal size={16} />
             终端
@@ -676,7 +664,7 @@ export default function Home() {
                 <Save size={14} className={isSaving ? 'animate-pulse' : ''} />
                 {isSaving ? '保存中...' : '保存'}
               </button>
-              
+
               <button
                 onClick={startProject}
                 disabled={projectStatus === 'starting'}
@@ -702,7 +690,7 @@ export default function Home() {
                 <RefreshCw size={14} />
                 刷新
               </button>
-              
+
               <button
                 onClick={() => previewUrl && window.open(previewUrl, '_blank')}
                 disabled={!previewUrl}
@@ -711,7 +699,7 @@ export default function Home() {
                 <ExternalLink size={14} />
                 新窗口
               </button>
-              
+
               <button
                 onClick={stopProject}
                 disabled={projectStatus === 'stopped'}
@@ -722,7 +710,7 @@ export default function Home() {
               </button>
             </>
           )}
-          
+
           <button
             onClick={() => setShowResetDialog(true)}
             disabled={isResetting}
@@ -732,7 +720,7 @@ export default function Home() {
             <RotateCcw size={14} className={isResetting ? 'animate-spin' : ''} />
             {isResetting ? '重置中' : '重置'}
           </button>
-          
+
           <button
             onClick={() => setShowBuildLog(!showBuildLog)}
             className="flex items-center gap-1 px-3 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
@@ -755,7 +743,7 @@ export default function Home() {
                   资源管理器
                 </h3>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto p-1">
                 <div className="space-y-1">
                   {renderFileTree(buildFileTree(Object.keys(files)))}
@@ -771,11 +759,10 @@ export default function Home() {
                   {openTabs.map((tab) => (
                     <div
                       key={tab.path}
-                      className={`flex items-center gap-2 px-4 py-2 border-r border-gray-200 cursor-pointer transition-colors ${
-                        activeFile === tab.path
-                          ? 'bg-white text-gray-800'
-                          : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+                      className={`flex items-center gap-2 px-4 py-2 border-r border-gray-200 cursor-pointer transition-colors ${activeFile === tab.path
+                        ? 'bg-white text-gray-800'
+                        : 'text-gray-600 hover:bg-gray-50'
+                        }`}
                       onClick={() => setActiveFile(tab.path)}
                     >
                       <span>{getFileIcon(tab.path)}</span>
@@ -855,7 +842,7 @@ export default function Home() {
                       </button>
                     </>
                   )}
-                  
+
                   {projectStatus === 'starting' && (
                     <>
                       <Loader2 size={64} className="mx-auto mb-4 text-blue-500 animate-spin" />
@@ -863,7 +850,7 @@ export default function Home() {
                       <p className="text-gray-500">请稍候，正在构建和启动开发服务器...</p>
                     </>
                   )}
-                  
+
                   {projectStatus === 'error' && (
                     <>
                       <AlertCircle size={64} className="mx-auto mb-4 text-red-500" />
@@ -906,8 +893,8 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            
-            <div 
+
+            <div
               ref={buildLogRef}
               className="flex-1 overflow-y-auto p-3 font-mono text-xs space-y-1"
             >
@@ -936,21 +923,20 @@ export default function Home() {
               <span>当前: {currentFile.path}</span>
             )}
           </div>
-          
+
           <div className="flex items-center gap-4">
             {previewUrl && (
               <span className="text-blue-600">
                 预览: <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">{previewUrl}</a>
               </span>
             )}
-            <span className={`font-medium ${
-              projectStatus === 'running' ? 'text-green-600' :
+            <span className={`font-medium ${projectStatus === 'running' ? 'text-green-600' :
               projectStatus === 'starting' ? 'text-yellow-600' :
-              projectStatus === 'error' ? 'text-red-600' : 'text-gray-600'
-            }`}>
+                projectStatus === 'error' ? 'text-red-600' : 'text-gray-600'
+              }`}>
               状态: {projectStatus}
             </span>
-            
+
             {/* 信息面板切换按钮 */}
             <button
               onClick={() => setShowStatusInfo(!showStatusInfo)}
@@ -975,11 +961,10 @@ export default function Home() {
                 <div className="text-xs space-y-1">
                   <div className="flex justify-between">
                     <span className="text-gray-600">状态:</span>
-                    <span className={`font-medium ${
-                      projectStatus === 'running' ? 'text-green-600' :
+                    <span className={`font-medium ${projectStatus === 'running' ? 'text-green-600' :
                       projectStatus === 'starting' ? 'text-yellow-600' :
-                      projectStatus === 'error' ? 'text-red-600' : 'text-gray-600'
-                    }`}>
+                        projectStatus === 'error' ? 'text-red-600' : 'text-gray-600'
+                      }`}>
                       {projectStatus}
                     </span>
                   </div>
@@ -994,10 +979,10 @@ export default function Home() {
                   {previewUrl && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">预览:</span>
-                      <a 
-                        href={previewUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
+                      <a
+                        href={previewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-blue-600 hover:underline font-medium truncate max-w-32"
                         title={previewUrl}
                       >
@@ -1024,7 +1009,7 @@ export default function Home() {
           </div>
         )}
       </div>
-      
+
       {/* 重置确认对话框 */}
       <ResetConfirmationDialog
         open={showResetDialog}
