@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // 设置基础路径和静态资源前缀，确保与主应用隔离
   basePath: '/sandbox',
   assetPrefix: '/sandbox',
   images: {
