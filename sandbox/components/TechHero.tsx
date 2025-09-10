@@ -3,135 +3,170 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Rocket, Sparkle, ShieldCheck, Cpu, Cloud } from "lucide-react";
+import { Rocket, ShieldCheck, Cpu, ArrowRight, CloudLightning } from "lucide-react";
 import React from "react";
 
-// Color system
-const color = {
-  brand: {
-    primary: "#3B82F6" // blue
-  },
-  neutral: {
-    bg: "#F9FAFB",
-    surface: "#FFFFFF",
-    text: "#1E293B",
-    border: "#E5E7EB"
-  },
-  accent: {
-    one: "#10B981", // teal
-    two: "#A78BFA"  // purple
-  }
-};
+// Color system (technology/cool):
+// brand.primary: #2563eb (blue-600)
+// neutral.bg: #f9fafb (gray-50)
+// neutral.surface: #1e293b (slate-800)
+// neutral.text: #0f172a (slate-900)
+// accent.1: #14b8a6 (teal-500)
+// accent.2: #6366f1 (indigo-500)
+// Light/dark handled via Tailwind classes
 
-// Mock data: hero features
-const features = [
+export type TechHeroProps = Partial<{
+  title: string;
+  subtitle: string;
+  features: {
+    icon: React.ReactNode;
+    label: string;
+    description: string;
+  }[];
+  ctaLabel: string;
+  ctaUrl: string;
+  imageUrl: string;
+  gradient: boolean;
+  darkMode: boolean;
+}>;
+
+const mockFeatures = [
   {
-    icon: <Cpu className="w-6 h-6 text-[#10B981]" aria-label="AI-powered" />,
-    title: "AI-powered Engine",
-    desc: "Harness next-gen artificial intelligence for your workflow."
+    icon: <Rocket className="text-brand-primary w-6 h-6" />, // Blue
+    label: "极速部署",
+    description: "一键实现云端加速，秒级上线你的应用。"
   },
   {
-    icon: <ShieldCheck className="w-6 h-6 text-[#A78BFA]" aria-label="Security" />,
-    title: "Robust Security",
-    desc: "Enterprise-grade protection for your data at every step."
+    icon: <ShieldCheck className="text-accent-1 w-6 h-6" />, // Teal
+    label: "安全保障",
+    description: "企业级安全策略与多层加密，数据无忧。"
   },
   {
-    icon: <Cloud className="w-6 h-6 text-[#3B82F6]" aria-label="Cloud" />,
-    title: "Cloud Scalability",
-    desc: "Effortlessly scale with resilient cloud infrastructure."
+    icon: <Cpu className="text-accent-2 w-6 h-6" />, // Indigo
+    label: "智能引擎",
+    description: "AI驱动自动优化，性能持续领先。"
+  },
+  {
+    icon: <CloudLightning className="text-brand-primary w-6 h-6" />,
+    label: "智能云",
+    description: "弹性扩展，按需分配算力资源。"
   }
 ];
 
-// TechHero Props
-export type TechHeroProps = Partial<{
-  headline: string;
-  subheading: string;
-  ctaLabel: string;
-  imageUrl: string;
-  onCta: () => void;
-}>;
-
-const defaultImage = "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=1200&q=80";
+const mockImage =
+  "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=1200&q=80"; // Data center tech
 
 const TechHero: React.FC<TechHeroProps> = ({
-  headline = "Empower Your Future with Cutting-edge Technology",
-  subheading = "Unlock performance, security, and innovation for your organization with our advanced tech solutions.",
-  ctaLabel = "Get Started",
-  imageUrl = defaultImage,
-  onCta = () => toast.success("Demo started!")
+  title = "驱动未来的科技引擎",
+  subtitle = "云端智能，安全高效，点燃创新。",
+  features = mockFeatures,
+  ctaLabel = "立即体验",
+  ctaUrl = "#",
+  imageUrl = mockImage,
+  gradient = true,
+  darkMode = false
 }) => {
+  // Color classes
+  const brandPrimary = darkMode ? "text-blue-400" : "text-blue-600";
+  const accent1 = darkMode ? "text-teal-400" : "text-teal-500";
+  const accent2 = darkMode ? "text-indigo-300" : "text-indigo-500";
+  const bgMain = darkMode ? "bg-slate-800" : "bg-gray-50";
+  const textMain = darkMode ? "text-slate-100" : "text-slate-900";
+
+  // Gradient overlay
+  const gradientStyle = gradient
+    ? darkMode
+      ? "bg-gradient-to-r from-blue-900 via-slate-800 to-indigo-900"
+      : "bg-gradient-to-r from-blue-50 via-gray-50 to-teal-50"
+    : bgMain;
+
+  // Button hover gradient
+  const btnGradient =
+    "bg-gradient-to-r from-blue-600 via-teal-500 to-indigo-500 hover:from-blue-700 hover:via-teal-600 hover:to-indigo-600 text-white shadow-lg";
+
+  // Main layout: flex row desktop, column tablet/mobile
   return (
     <motion.div
-      className="w-full bg-[linear-gradient(120deg,#3B82F6_0%,#A78BFA_100%)] dark:bg-[#1E293B]"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
+      className={`w-full ${gradientStyle} py-16 px-8 md:px-16 lg:px-32 flex flex-col md:flex-row items-center justify-between gap-12 min-h-[480px]`}
     >
-      <div className="max-w-screen-xl mx-auto px-8 py-16 flex flex-row items-center gap-12 md:gap-8 md:flex-col md:px-4 md:py-12">
-        {/* Left: Text & CTA */}
-        <motion.div
-          className="flex-1 flex flex-col gap-8"
-          initial={{ x: -30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.22 }}
+      {/* Left: Content */}
+      <motion.div
+        initial={{ opacity: 0, x: -30 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.22 }}
+        className="flex flex-col gap-8 max-w-xl w-full"
+      >
+        <h1
+          className={`font-sans font-semibold ${brandPrimary} text-4xl md:text-5xl leading-tight mb-2`}
         >
-          <Badge className="mb-2 w-fit px-3 py-1 bg-[#10B981] text-white font-mono text-sm shadow-md" variant="secondary">
-            <Sparkle className="inline-block mr-2 w-4 h-4" />
-            Technology Hero
-          </Badge>
-          <h1 className="font-sans text-4xl lg:text-5xl font-bold leading-tight text-white mb-4">
-            {headline}
-          </h1>
-          <p className="font-serif text-lg leading-relaxed text-white/90 mb-2">
-            {subheading}
-          </p>
-
-          {/* Features */}
-          <div className="flex flex-row gap-6 md:gap-4">
-            {features.map((feat, idx) => (
-              <Card key={feat.title} className="flex items-center gap-2 px-4 py-3 shadow-lg bg-white/80 border-0">
-                <span aria-hidden className="rounded-full bg-[#F9FAFB] p-2">
-                  {feat.icon}
+          {title}
+        </h1>
+        <p
+          className={`font-sans ${textMain} text-lg md:text-xl leading-relaxed mb-4`}
+        >
+          {subtitle}
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {features.slice(0, 4).map((f, idx) => (
+            <Card key={idx} className="flex gap-4 items-start p-4 shadow-lg bg-white/70 dark:bg-slate-900/80">
+              <div>{f.icon}</div>
+              <div className="flex flex-col gap-1">
+                <span className="font-sans font-medium text-base text-slate-800 dark:text-slate-100">
+                  {f.label}
                 </span>
-                <div>
-                  <span className="font-sans font-semibold text-base text-[#1E293B]">{feat.title}</span>
-                  <span className="block text-sm text-[#475569] leading-6">{feat.desc}</span>
-                </div>
-              </Card>
-            ))}
-          </div>
-
+                <span className="font-sans text-sm text-slate-600 dark:text-slate-400 leading-6">
+                  {f.description}
+                </span>
+              </div>
+            </Card>
+          ))}
+        </div>
+        <div className="mt-4">
           <Button
             asChild
-            size="lg"
-            className="mt-8 px-8 py-3 font-mono text-lg shadow-xl bg-[#3B82F6] hover:bg-gradient-to-r hover:from-[#3B82F6] hover:to-[#10B981] text-white"
-            onClick={onCta}
+            className={
+              `${btnGradient} px-6 py-3 font-sans font-semibold text-lg rounded-lg shadow-xl flex gap-2 items-center`
+            }
+            onClick={() =>
+              toast.success("欢迎体验智能云平台！", {
+                description: "已为您准备好极速部署与安全保障。",
+                duration: 2200
+              })
+            }
           >
-            <span>
-              <Rocket className="inline-block mr-2 w-5 h-5" />
+            <a href={ctaUrl}>
               {ctaLabel}
-            </span>
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </a>
           </Button>
-        </motion.div>
+        </div>
+      </motion.div>
 
-        {/* Right: Image */}
-        <motion.div
-          className="flex-1 flex justify-center items-center"
-          initial={{ x: 30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.22 }}
-        >
-          <Card className="w-full max-w-md shadow-2xl bg-white border-0 flex flex-col items-center p-0">
-            <Avatar className="w-full h-64 md:h-48">
-              <AvatarImage src={imageUrl} alt="Tech hero banner" className="object-cover w-full h-full rounded-t-lg" />
-              <AvatarFallback className="bg-[#E5E7EB] text-[#1E293B] font-mono">TECH</AvatarFallback>
-            </Avatar>
-          </Card>
-        </motion.div>
-      </div>
+      {/* Right: Image avatar/card */}
+      <motion.div
+        initial={{ opacity: 0, x: 30 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.25 }}
+        className="flex items-center justify-center w-full md:w-[380px] lg:w-[420px]"
+      >
+        <Card className="p-0 overflow-hidden shadow-2xl bg-white/80 dark:bg-slate-900/80">
+          <Avatar className="w-full h-[340px] md:h-[360px] lg:h-[420px]">
+            <AvatarImage
+              src={imageUrl}
+              alt="科技数据中心"
+              className="object-cover w-full h-full"
+            />
+            <AvatarFallback className="flex items-center justify-center text-2xl font-mono bg-gray-100 dark:bg-slate-700">
+              AI
+            </AvatarFallback>
+          </Avatar>
+        </Card>
+      </motion.div>
     </motion.div>
   );
 };
