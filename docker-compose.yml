@@ -78,6 +78,8 @@ services:
       - HOSTNAME=0.0.0.0
     volumes:
       - ./sandbox:/app/sandbox:rw
+    working_dir: /app/sandbox
+    command: ["pnpm", "run", "dev"]
     restart: unless-stopped
     networks:
       - v0-sandbox-network
