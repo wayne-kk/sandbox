@@ -1,225 +1,208 @@
-// FinanceHero.tsx
+// components/FinanceHero.tsx
 "use client";
-import { motion } from "framer-motion";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Avatar,
-  Badge
-} from "@/components/ui/card";
+
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { TrendingUp, ShieldCheck, Bank } from "lucide-react";
+import { CheckCircle, TrendingUp, ShieldCheck } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import * as React from "react";
 
-// Color system
-const COLORS = {
+// Finance hero mock data
+const heroMock = {
+  headline: "Grow Your Wealth with Confidence",
+  subheadline:
+    "Professional tools and insights for modern investors. Secure, transparent, and built for your future.",
+  cta: "Start Investing",
+  secondaryCta: "Learn More",
+  image:
+    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+  features: [
+    { icon: TrendingUp, label: "Real-time Analytics", description: "Track market trends instantly." },
+    { icon: ShieldCheck, label: "Bank-level Security", description: "Your data is protected 24/7." },
+    { icon: CheckCircle, label: "Expert Support", description: "Get help from finance pros." },
+  ],
+};
+
+// Color system for finance (cool theme)
+const colorTheme = {
   brand: {
-    primary: "#2166C4", // blue, trustworthy
+    primary: "#2463EB", // blue-600
   },
   neutral: {
-    bg: "#F5F8FA",
-    surface: "#FFFFFF",
-    text: "#1A2330",
-    border: "#E2E8F0"
+    bg: "#F9FAFB",         // neutral-50
+    surface: "#FFFFFF",    // neutral-0
+    text: "#111827",       // neutral-900
+    border: "#E5E7EB",    // neutral-200
   },
   accent: {
-    one: "#23B26F", // green for growth
-    two: "#FFC76C" // yellow for optimism
+    1: "#38BDF8", // sky-400
+    2: "#10B981", // emerald-500
   },
 };
 
-// Mock data for hero highlights
-const heroHighlights = [
-  {
-    icon: TrendingUp,
-    label: "Smart Investments",
-    description: "Grow your wealth with AI-powered insights."
-  },
-  {
-    icon: ShieldCheck,
-    label: "Secure Savings",
-    description: "Your assets protected with top-grade security."
-  },
-  {
-    icon: Bank,
-    label: "Easy Banking",
-    description: "Manage accounts & transactions in one place."
-  }
-];
-
-// Mock testimonials
-const testimonials = [
-  {
-    name: "Ava Lee",
-    role: "Entrepreneur",
-    avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=facearea&w=64&q=80",
-    quote: "FinanceFlow helped grow my portfolio 25% in just 6 months!"
-  },
-  {
-    name: "James Kim",
-    role: "Investor",
-    avatar: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=facearea&w=64&q=80",
-    quote: "Secure and easy to use. The AI advice is a game changer."
-  },
-  {
-    name: "Sophia Zhang",
-    role: "Freelancer",
-    avatar: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=facearea&w=64&q=80",
-    quote: "I love the clean design and quick transfers!"
-  }
-];
-
 export type FinanceHeroProps = Partial<{
-  title: string;
-  subtitle: string;
-  ctaText: string;
-  backgroundImage: string;
+  headline: string;
+  subheadline: string;
+  cta: string;
+  secondaryCta: string;
+  image: string;
+  features: {
+    icon: React.ElementType;
+    label: string;
+    description: string;
+  }[];
 }>;
 
-const defaultBG =
-  "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=1600&q=80";
+const defaultProps: FinanceHeroProps = { ...heroMock };
 
-function handleDemoCTA() {
-  toast.success("Demo requested! We'll be in touch soon.");
+const cardVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+};
+
+function handleCtaClick() {
+  toast.success("Welcome! Your journey to smarter investing starts now.");
 }
 
-const FinanceHero = ({
-  title = "Your Money, Smarter.",
-  subtitle = "FinanceFlow empowers you with secure banking and intelligent investment tools—all in one powerful platform.",
-  ctaText = "Get Started Free",
-  backgroundImage = defaultBG
-}: FinanceHeroProps) => {
-  const [email, setEmail] = useState("");
+const FinanceHero: React.FC<FinanceHeroProps> = (props = defaultProps) => {
+  const {
+    headline = heroMock.headline,
+    subheadline = heroMock.subheadline,
+    cta = heroMock.cta,
+    secondaryCta = heroMock.secondaryCta,
+    image = heroMock.image,
+    features = heroMock.features,
+  } = props;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 32 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22 }}
-      className="relative w-full min-h-[540px] flex items-center justify-center bg-gradient-to-br from-[#2166C4] via-[#23B26F] to-[#FFC76C]"
-      style={{ background: `linear-gradient(112deg, ${COLORS.brand.primary} 40%, ${COLORS.accent.one} 70%, ${COLORS.accent.two} 100%)` }}
+    <section
+      className="relative w-full min-h-[520px] md:min-h-[600px] bg-[var(--bg)] flex items-center justify-center overflow-hidden"
+      style={{
+        // Light mode default; dark mode handled by Tailwind classes if used
+        backgroundColor: colorTheme.neutral.bg,
+        color: colorTheme.neutral.text,
+      }}
     >
-      {/* Overlay for contrast */}
-      <div className="absolute inset-0 z-0">
-        <Image
-          src={backgroundImage}
-          alt="Finance background"
-          fill
-          className="object-cover opacity-35"
-          priority
-        />
+      <div
+        className="absolute inset-0 -z-10"
+        aria-hidden="true"
+      >
+        {/* Subtle blue gradient overlay for hero decoration */}
         <div
-          className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/60 to-white/0 dark:from-[#1A2330]/85 dark:via-[#2166C4]/40 dark:to-[#23B26F]/10"
+          className="w-full h-full"
+          style={{
+            background:
+              "linear-gradient(110deg, rgba(36,99,235,0.10) 0%, rgba(56,189,248,0.09) 80%)",
+          }}
         />
       </div>
-      <div className="relative z-10 w-full max-w-5xl px-8 py-16 flex flex-col gap-12">
-        {/* Hero Main Section */}
-        <div className="flex flex-col md:flex-row items-center gap-8">
-          <div className="flex-1 flex flex-col gap-6">
-            <motion.h1
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.19 }}
-              className="text-4xl lg:text-5xl font-bold font-sans text-[#1A2330] dark:text-white leading-tight"
-            >
-              {title}
-            </motion.h1>
-            <p className="text-lg lg:text-xl font-serif text-[#2166C4] dark:text-[#FFC76C] leading-relaxed max-w-xl">
-              {subtitle}
-            </p>
-            {/* CTA form */}
-            <form
-              className="flex flex-col sm:flex-row items-center gap-4 mt-2"
-              onSubmit={e => {
-                e.preventDefault();
-                handleDemoCTA();
-              }}
-            >
-              <Input
-                type="email"
-                placeholder="Your Email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="bg-white/80 border border-[#E2E8F0] text-base px-4 py-2 rounded-lg font-sans"
-                required
-                aria-label="Email address"
-              />
-              <Button
-                type="submit"
-                className="shadow-lg bg-[#2166C4] hover:bg-[#23B26F] text-white font-bold px-6 py-2 rounded-lg text-base"
-                aria-label={ctaText}
-              >
-                {ctaText}
-              </Button>
-            </form>
-          </div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.16 }}
-            className="flex-1 flex items-center justify-center"
-          >
-            <Card className="shadow-2xl bg-white/90 border border-[#E2E8F0] rounded-2xl max-w-sm p-6 flex flex-col gap-4">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-[#2166C4] font-bold text-lg">
-                  <Bank className="w-6 h-6 text-[#23B26F]" />
-                  FinanceFlow
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                {heroHighlights.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <item.icon className="w-5 h-5 text-[#FFC76C]" />
-                    <span className="font-medium text-[#2166C4]">{item.label}</span>
-                  </div>
-                ))}
-              </CardContent>
-              <Badge className="bg-[#23B26F] text-white text-sm font-mono px-3 py-1">
-                AI Powered
-              </Badge>
-            </Card>
-          </motion.div>
-        </div>
-        {/* Testimonials */}
+      <div className="container mx-auto px-6 md:px-12 lg:px-24 py-16 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+        {/* Left: Text + Actions */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.18 }}
-          className="w-full grid grid-cols-1 md:grid-cols-3 gap-6"
+          className="flex-1 flex flex-col items-start gap-8"
+          initial={{ opacity: 0, x: -40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.25 }}
         >
-          {testimonials.map((t, idx) => (
-            <Card
-              key={idx}
-              className="shadow-lg border border-[#E2E8F0] bg-white/90 flex flex-col gap-3 p-5 rounded-xl"
+          <h1 className="font-sans font-bold text-[2.2rem] leading-[1.1] md:text-4xl lg:text-5xl text-[var(--text)] mb-2">
+            {headline}
+          </h1>
+          <p className="font-sans text-base md:text-lg leading-relaxed text-gray-700 max-w-xl mb-4">
+            {subheadline}
+          </p>
+          <div className="flex flex-wrap gap-4 items-center mb-2">
+            <Button
+              asChild
+              size="lg"
+              className="shadow-xl bg-[var(--brand-primary)] text-white hover:bg-blue-700 transition-colors"
+              style={{ backgroundColor: colorTheme.brand.primary }}
+              onClick={handleCtaClick}
             >
-              <CardHeader className="flex items-center gap-3">
-                <Avatar>
-                  <Image
-                    src={t.avatar}
-                    alt={t.name}
-                    width={48}
-                    height={48}
-                    className="rounded-full object-cover"
-                  />
-                </Avatar>
-                <div>
-                  <span className="font-bold text-[#2166C4] text-base">{t.name}</span>
-                  <br />
-                  <span className="text-sm text-[#1A2330]">{t.role}</span>
-                </div>
-              </CardHeader>
-              <CardContent className="text-[#1A2330] text-base leading-relaxed font-serif">
-                “{t.quote}”
-              </CardContent>
-            </Card>
-          ))}
+              <span>{cta}</span>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="shadow-md border-gray-200 text-[var(--brand-primary)] border-2"
+              style={{ color: colorTheme.brand.primary, borderColor: colorTheme.neutral.border }}
+            >
+              <span>{secondaryCta}</span>
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-2">
+            {features.map((feature, i) => (
+              <motion.div
+                key={feature.label}
+                variants={cardVariants}
+                initial="initial"
+                animate="animate"
+                transition={{ duration: 0.16 + i * 0.06 }}
+                className="w-full"
+              >
+                <Card className="shadow-md bg-white/95 border-0">
+                  <CardContent className="flex items-center gap-3 py-4">
+                    <feature.icon
+                      className="text-[var(--accent1)] w-6 h-6"
+                      style={{ color: colorTheme.accent[1] }}
+                      aria-hidden="true"
+                    />
+                    <div>
+                      <div className="font-semibold text-sm text-gray-900">{feature.label}</div>
+                      <div className="text-xs text-gray-500 leading-5">{feature.description}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+        {/* Right: Hero Image */}
+        <motion.div
+          className="flex-1 flex items-center justify-center"
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.22 }}
+        >
+          <div className="relative w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
+            <Image
+              src={image}
+              alt="Finance hero illustration"
+              width={640}
+              height={480}
+              className="w-full h-auto object-cover rounded-2xl"
+              priority
+              style={{ background: '#F3F4F6' }}
+            />
+            {/* Optional overlay for contrast on text in dark mode */}
+            <div className="absolute inset-0 bg-gradient-to-t from-white/80 to-transparent pointer-events-none" />
+          </div>
         </motion.div>
       </div>
-    </motion.div>
+      <style jsx global>{`
+        :root {
+          --brand-primary: ${colorTheme.brand.primary};
+          --accent1: ${colorTheme.accent[1]};
+          --accent2: ${colorTheme.accent[2]};
+          --bg: ${colorTheme.neutral.bg};
+          --surface: ${colorTheme.neutral.surface};
+          --text: ${colorTheme.neutral.text};
+          --border: ${colorTheme.neutral.border};
+        }
+        [data-theme="dark"] {
+          --bg: #0e1433;
+          --surface: #172554;
+          --text: #f1f5f9;
+          --border: #334155;
+          --brand-primary: #60a5fa;
+          --accent1: #38bdf8;
+          --accent2: #10b981;
+        }
+      `}</style>
+    </section>
   );
 };
 

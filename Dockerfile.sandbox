@@ -6,12 +6,13 @@ WORKDIR /app
 # 复制 sandbox 目录
 COPY sandbox/ .
 
-# 安装依赖
-RUN npm config set registry https://registry.npmmirror.com
-RUN npm config set fetch-timeout 300000
-RUN npm config set fetch-retry-mintimeout 20000
-RUN npm config set fetch-retry-maxtimeout 120000
-RUN npm install
+s# 安装pnpm并设置配置
+RUN npm install -g pnpm
+RUN pnpm config set registry https://registry.npmmirror.com
+RUN pnpm config set fetch-timeout 300000
+RUN pnpm config set fetch-retry-mintimeout 20000
+RUN pnpm config set fetch-retry-maxtimeout 120000
+RUN pnpm install
 
 # 创建非root用户
 RUN addgroup --system --gid 1001 nodejs && \
@@ -29,4 +30,4 @@ ENV HOSTNAME="0.0.0.0"
 EXPOSE 3100
 
 # 启动命令
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]

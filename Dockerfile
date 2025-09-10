@@ -12,7 +12,7 @@ WORKDIR /app
 
 # npm 配置
 RUN npm config set registry https://registry.npmmirror.com/ && \
-    npm config set fetch-retries 5 && \
+    npm config set fetch-retries 3 && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set maxsockets 15
@@ -21,21 +21,24 @@ RUN npm config set registry https://registry.npmmirror.com/ && \
 RUN npm install -g pnpm
 
 # 设置 pnpm 镜像源和缓存目录
-RUN pnpm config set registry https://registry.npmmirror.com
+RUN pnpm config set registry https://registry.npmmirror.com && \
+    pnpm config set store-dir /app/.cache/pnpm/store && \
+    pnpm config set cache-dir /app/.cache/pnpm/cache
 ENV PNPM_CACHE_DIR=/app/.cache/pnpm
 RUN mkdir -p /app/.cache/pnpm
 
 # 安装依赖
 COPY package.json pnpm-lock.yaml* ./
-RUN for i in 1 2 3; do \
-        pnpm config set store-dir /app/.cache/pnpm/store && \
-        pnpm config set cache-dir /app/.cache/pnpm/cache && \
-        pnpm install --frozen-lockfile --prefer-offline && break || \
-        (echo "Attempt $i failed, retrying..." && sleep 5); \
-    done
+RUN pnpm install --frozen-lockfile --prefer-offline
 
-# 复制代码
-COPY . .
+# 复制源代码（排除不需要的文件）
+COPY src/ ./src/
+COPY public/ ./public/
+COPY prisma/ ./prisma/
+COPY next.config.ts ./
+COPY tsconfig.json ./
+COPY tailwind.config.js ./
+COPY postcss.config.mjs ./
 
 # 生成 Prisma 客户端
 ENV DATABASE_URL="file:./dev.db"
@@ -44,7 +47,7 @@ RUN npx prisma generate || echo "Prisma generate failed, continuing..."
 # 构建
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN pnpm run build
 
 # 生产运行
 FROM node:20-alpine AS runner
