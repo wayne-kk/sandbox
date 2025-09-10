@@ -97,8 +97,6 @@ services:
     networks:
       - v0-sandbox-network
 
-volumes:
-
 networks:
   v0-sandbox-network:
     driver: bridge
