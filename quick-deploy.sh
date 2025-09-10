@@ -64,7 +64,6 @@ REQUIRMENT_DIFY_API_KEY=app-YgkdhmiPidrzl8e1bbaIdNrb
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
 NEXTAUTH_URL=http://$SERVER_IP:3000
 NEXT_PUBLIC_APP_URL=http://$SERVER_IP:3000
-REDIS_URL=redis://redis:6379
 http_proxy=
 https_proxy=
 HTTP_PROXY=
