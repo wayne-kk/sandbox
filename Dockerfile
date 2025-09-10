@@ -27,18 +27,20 @@ RUN pnpm config set registry https://registry.npmmirror.com && \
 ENV PNPM_CACHE_DIR=/app/.cache/pnpm
 RUN mkdir -p /app/.cache/pnpm
 
-# 安装依赖
+# 安装依赖（利用Docker层缓存）
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile --prefer-offline
 
-# 复制源代码（排除不需要的文件）
-COPY src/ ./src/
-COPY public/ ./public/
-COPY prisma/ ./prisma/
+# 复制配置文件（这些文件变更较少，可以单独缓存）
 COPY next.config.ts ./
 COPY tsconfig.json ./
 COPY tailwind.config.js ./
 COPY postcss.config.mjs ./
+
+# 复制源代码（这些文件变更频繁，放在最后）
+COPY src/ ./src/
+COPY public/ ./public/
+COPY prisma/ ./prisma/
 
 # 生成 Prisma 客户端
 ENV DATABASE_URL="file:./dev.db"
@@ -47,6 +49,7 @@ RUN npx prisma generate || echo "Prisma generate failed, continuing..."
 # 构建
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm run build
 
 # 生产运行

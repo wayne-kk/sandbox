@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
     // 忽略 sandbox 目录的 TypeScript 错误
     ignoreBuildErrors: true,
   },
+  // 优化构建性能
+  experimental: {
+    // 启用并行构建（仅在支持worker的环境中）
+    // parallelServerBuildTraces: true,
+  },
+  // 优化图片处理
+  images: {
+    unoptimized: true,
+  },
   // 排除不需要打包的目录
   outputFileTracingExcludes: {
     '*': [
@@ -36,7 +45,24 @@ const nextConfig: NextConfig = {
   // 输出配置
   output: 'standalone',
   // 忽略构建时的文件
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
+    // 优化构建性能
+    if (!dev) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+            },
+          },
+        },
+      };
+    }
+
     if (isServer) {
       // 服务器端排除不需要的文件
       config.externals = config.externals || [];
