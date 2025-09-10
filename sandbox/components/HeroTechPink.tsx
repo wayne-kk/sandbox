@@ -1,152 +1,169 @@
-// HeroTechPink.tsx
+// components/HeroTechPink.tsx
 "use client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { toast } from "sonner";
-import { Sparkle, ArrowRight, ShieldCheck, Cpu, Code2 } from "lucide-react";
-import React from "react";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ArrowRight, Sparkle, Share2 } from "lucide-react";
+import * as React from "react";
 
-// Color system
-const brand = {
-  primary: "#F472B6", // pink-400
-};
-const neutral = {
-  bg: "#18181b", // zinc-900
-  surface: "#27272a", // zinc-800
-  text: "#fafafa", // zinc-50
-  border: "#e5e7eb", // zinc-200
-};
-const accent = {
-  one: "#C4B5FD", // purple-300
-  two: "#38BDF8", // sky-400
+// Pink Tech theme color system
+const COLORS = {
+  brand: {
+    primary: "#ef4f93", // Brand Pink
+  },
+  neutral: {
+    bg: "#f9fafb",
+    surface: "#ffffff",
+    text: "#191724",
+    border: "#e5e7eb",
+  },
+  accent: {
+    one: "#ffb4e6", // Light pink accent
+    two: "#be4bdb", // Purple accent
+  },
 };
 
-// Mock hero features
-const features = [
+// Mock data: Tech Hero Messages
+const mockMessages = [
   {
-    icon: <Sparkle size={24} strokeWidth={2} className="text-pink-400" />,
-    title: "AI-Powered Insights",
-    desc: "Harness intelligent algorithms for actionable data.",
+    headline: "Empower Your Creativity with AI",
+    subtext:
+      "Next-gen tools for creators, powered by neural networks and real-time data.",
+    cta: "Get Started",
+    image:
+      "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80",
   },
   {
-    icon: <ShieldCheck size={24} strokeWidth={2} className="text-purple-400" />,
-    title: "Secured by Design",
-    desc: "End-to-end encryption for peace of mind.",
+    headline: "Seamless Collaboration, Instantly",
+    subtext:
+      "Connect, innovate, and build together in our futuristic workspace.",
+    cta: "Try Now",
+    image:
+      "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80",
   },
   {
-    icon: <Cpu size={24} strokeWidth={2} className="text-sky-400" />,
-    title: "Lightning Performance",
-    desc: "Built on next-gen technology for speed.",
+    headline: "Data. Design. Delivered.",
+    subtext:
+      "Visualize insights and drive smart decisions with style.",
+    cta: "Explore Features",
+    image:
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
   },
 ];
 
-// Hero image
-const heroImage =
-  "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80"; // Tech pink
-
-export type HeroTechPinkProps = Partial<{
+type HeroTechPinkProps = Partial<{
   headline: string;
-  description: string;
-  buttonText: string;
-  buttonAction: () => void;
-  imageUrl: string;
-  features: typeof features;
+  subtext: string;
+  cta: string;
+  image: string;
 }>;
 
-const defaultProps: HeroTechPinkProps = {
-  headline: "Empower Your Workflow with AI & Tech",
-  description:
-    "Unlock next-level productivity and security with our cutting-edge platform. Experience technology that adapts to your needs.",
-  buttonText: "Get Started",
-  buttonAction: () => toast.success("Welcome to Tech Hero! 🚀"),
-  imageUrl: heroImage,
-  features,
-};
-
-const HeroTechPink: React.FC<HeroTechPinkProps> = (props = defaultProps) => {
-  const {
-    headline,
-    description,
-    buttonText,
-    buttonAction,
-    imageUrl,
-    features: featureList,
-  } = { ...defaultProps, ...props };
-
+const HeroTechPink: React.FC<HeroTechPinkProps> = ({
+  headline = mockMessages[0].headline,
+  subtext = mockMessages[0].subtext,
+  cta = mockMessages[0].cta,
+  image = mockMessages[0].image,
+}) => {
   return (
-    <AnimatePresence>
+    <motion.section
+      className="w-full min-h-[520px] flex items-center justify-center bg-[linear-gradient(112deg,_#ef4f93_0%,_#be4bdb_100%)] dark:bg-[linear-gradient(112deg,_#be4bdb_0%,_#ef4f93_100%)] px-8 py-16"
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+    >
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 24 }}
-        transition={{ duration: 0.22 }}
-        className="w-full bg-[#18181b] text-[#fafafa] font-sans py-16 px-8 flex flex-col gap-12 items-center justify-center md:flex-row md:gap-16 md:py-24 md:px-16"
+        className="flex flex-row items-center gap-12 max-w-7xl w-full md:flex-row flex-col md:gap-16"
       >
-        {/* Left: Text Content */}
-        <motion.div
-          initial={{ x: -24, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.18 }}
-          className="flex flex-col gap-8 max-w-xl md:items-start items-center"
-        >
+        {/* Text Section */}
+        <motion.div className="flex-1 flex flex-col gap-6 md:items-start items-center text-center md:text-left">
+          <motion.div className="flex items-center gap-2 mb-2">
+            <Sparkle
+              className="text-[--brand-primary] text-xl"
+              color={COLORS.brand.primary}
+              size={28}
+            />
+            <span
+              className="uppercase tracking-widest font-mono text-sm text-[--accent-one]"
+              style={{ color: COLORS.accent.one }}
+            >
+              Tech Innovation
+            </span>
+          </motion.div>
+
           <h1
-            className="text-4xl lg:text-5xl font-bold text-pink-400 mb-2 leading-tight text-center md:text-left"
-            style={{ color: brand.primary }}
+            className="font-sans text-4xl lg:text-5xl font-bold text-[--neutral-text] leading-tight"
+            style={{ color: COLORS.neutral.text }}
           >
             {headline}
           </h1>
-          <p className="text-lg leading-relaxed text-zinc-100 mb-2 text-center md:text-left">
-            {description}
-          </p>
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-lg">
-            {featureList?.map((f, i) => (
-              <Card
-                key={i}
-                className="bg-[#27272a] shadow-lg border-none flex flex-col items-center justify-center p-4 gap-2"
-              >
-                <CardContent className="flex flex-col items-center gap-2">
-                  {f.icon}
-                  <span className="font-semibold text-base text-zinc-50 text-center">
-                    {f.title}
-                  </span>
-                  <span className="text-sm leading-6 text-zinc-300 text-center">
-                    {f.desc}
-                  </span>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <Button
-            size="lg"
-            className="mt-6 shadow-xl bg-pink-400 hover:bg-pink-500 text-zinc-900 font-bold text-lg px-8 py-4 rounded-xl flex gap-2 items-center"
-            onClick={buttonAction}
+
+          <p
+            className="font-sans text-lg text-[--neutral-text] leading-relaxed max-w-xl opacity-90"
+            style={{ color: COLORS.neutral.text }}
           >
-            {buttonText}
-            <ArrowRight size={20} />
-          </Button>
+            {subtext}
+          </p>
+
+          <div className="flex flex-row gap-4 mt-4">
+            <Button
+              size="lg"
+              className="font-sans text-base font-semibold px-6 py-3 shadow-lg bg-[--brand-primary] hover:bg-[--accent-two] text-white rounded-full transition-colors duration-200"
+              style={{
+                backgroundColor: COLORS.brand.primary,
+                boxShadow: "0 8px 32px 0 rgba(239, 79, 147, 0.18)",
+              }}
+            >
+              {cta}
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="font-sans text-base px-6 py-3 rounded-full border-2 border-[--accent-one] text-[--brand-primary] bg-white shadow-md hover:bg-[--accent-one]/20 transition-colors duration-200"
+              style={{
+                borderColor: COLORS.accent.one,
+                color: COLORS.brand.primary,
+              }}
+            >
+              <Share2 className="mr-2 w-5 h-5" /> Share
+            </Button>
+          </div>
         </motion.div>
-        {/* Right: Hero Image */}
+        {/* Image Section */}
         <motion.div
-          initial={{ x: 24, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.18 }}
-          className="flex justify-center items-center"
+          className="flex-1 flex justify-center items-center md:mt-0 mt-10"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.23 }}
         >
-          <Card className="bg-[#27272a] shadow-2xl border-none p-6 flex flex-col items-center gap-4 max-w-md">
-            <Avatar className="w-64 h-64 shadow-xl">
-              <AvatarImage src={imageUrl} alt="Tech Hero" />
-              <AvatarFallback className="bg-pink-400 font-mono text-zinc-900 text-3xl">
-                AI
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-base text-purple-300 font-serif mt-2">Powered by the future</span>
+          <Card
+            className="shadow-2xl rounded-3xl overflow-hidden bg-[--neutral-surface] border-0 w-full max-w-lg"
+            style={{ background: COLORS.neutral.surface }}
+          >
+            <img
+              src={image}
+              alt="Tech Hero visual"
+              className="object-cover w-full h-[340px] md:h-[400px]"
+              style={{
+                background: COLORS.accent.one,
+                borderBottom: `4px solid ${COLORS.accent.two}`,
+              }}
+            />
           </Card>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+      <style jsx global>{`
+        :root {
+          --brand-primary: ${COLORS.brand.primary};
+          --accent-one: ${COLORS.accent.one};
+          --accent-two: ${COLORS.accent.two};
+          --neutral-bg: ${COLORS.neutral.bg};
+          --neutral-surface: ${COLORS.neutral.surface};
+          --neutral-text: ${COLORS.neutral.text};
+        }
+      `}</style>
+    </motion.section>
   );
 };
 

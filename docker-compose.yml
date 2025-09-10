@@ -17,19 +17,19 @@ services:
       - DIFY_API_ENDPOINT=${DIFY_API_ENDPOINT:-http://152.136.41.186:32422/v1/workflows/run}
       - COMPONENT_DIFY_API_KEY=${COMPONENT_DIFY_API_KEY:-app-p363bFgzxF8m9J1eyl5wasBT}
       - REQUIRMENT_DIFY_API_KEY=${REQUIRMENT_DIFY_API_KEY:-app-YgkdhmiPidrzl8e1bbaIdNrb}
-      - SERVER_HOST=${SERVER_HOST:-115.190.100.24}
-      - NEXT_PUBLIC_SERVER_HOST=${NEXT_PUBLIC_SERVER_HOST:-115.190.100.24}
+      - SERVER_HOST=${SERVER_HOST:-wayne.beer}
+      - NEXT_PUBLIC_SERVER_HOST=${NEXT_PUBLIC_SERVER_HOST:-wayne.beer}
       - EXTERNAL_DOMAIN=${EXTERNAL_DOMAIN:-wayne.beer}
       - EXTERNAL_PROTOCOL=${EXTERNAL_PROTOCOL:-https}
       - EXTERNAL_PORT=${EXTERNAL_PORT:-}
-      - SANDBOX_PREVIEW_URL=${SANDBOX_PREVIEW_URL:-http://115.190.100.24/sandbox/}
-      - NEXT_PUBLIC_SANDBOX_PREVIEW_URL=${NEXT_PUBLIC_SANDBOX_PREVIEW_URL:-http://115.190.100.24/sandbox/}
+      - SANDBOX_PREVIEW_URL=${SANDBOX_PREVIEW_URL:-https://sandbox.wayne.beer/}
+      - NEXT_PUBLIC_SANDBOX_PREVIEW_URL=${NEXT_PUBLIC_SANDBOX_PREVIEW_URL:-https://sandbox.wayne.beer/}
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-secret-key}
-      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://wayne.beer}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://wayne.beer}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-}
@@ -105,9 +105,11 @@ services:
     image: nginx:alpine
     container_name: v0-sandbox-nginx
     ports:
-      - "8080:80"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
     restart: unless-stopped
     depends_on:
       - app
