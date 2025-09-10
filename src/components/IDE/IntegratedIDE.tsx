@@ -82,6 +82,36 @@ export default function IntegratedIDE({
   const previewUrl = wsState.url;
   const buildLog = wsState.logs;
 
+  // 从构建日志中提取预览URL作为fallback
+  const getPreviewUrlFromLogs = () => {
+    const urlLog = buildLog.find(log => log.includes('预览地址:'));
+    if (urlLog) {
+      const match = urlLog.match(/预览地址:\s*(.+)/);
+      if (match) {
+        return match[1].trim();
+      }
+    }
+    return null;
+  };
+
+  const effectivePreviewUrl = previewUrl || getPreviewUrlFromLogs();
+  const isPreviewReady = (projectStatus === 'running' && previewUrl) ||
+    (buildLog.some(log => log.includes('Sandbox服务器启动成功')) &&
+      buildLog.some(log => log.includes('预览地址')));
+
+  // 调试日志
+  useEffect(() => {
+    console.log('🔍 WebSocket状态更新:', {
+      projectStatus,
+      previewUrl,
+      effectivePreviewUrl,
+      isPreviewReady,
+      isConnected: wsState.isConnected,
+      logs: buildLog.length,
+      recentLogs: buildLog.slice(-3)
+    });
+  }, [projectStatus, previewUrl, effectivePreviewUrl, isPreviewReady, wsState.isConnected, buildLog.length]);
+
   // UI状态
   const [showStatusInfo, setShowStatusInfo] = useState(false);
 
@@ -201,11 +231,22 @@ export default function Home() {
       // 如果项目正在运行且有新URL，自动切换到预览标签
       if (projectStatus === 'running' && activeTab !== 'preview') {
         setTimeout(() => {
+          console.log('🌐 自动切换到预览标签');
           setActiveTab('preview');
         }, 1000);
       }
     }
   }, [previewUrl, lastUrl, projectStatus, activeTab]);
+
+  // 监听项目状态变化，当状态变为running时自动切换到预览
+  useEffect(() => {
+    if (projectStatus === 'running' && previewUrl && activeTab !== 'preview') {
+      console.log('🚀 项目已启动，自动切换到预览标签');
+      setTimeout(() => {
+        setActiveTab('preview');
+      }, 500);
+    }
+  }, [projectStatus, previewUrl, activeTab]);
 
   // WebSocket会自动处理状态同步，不需要额外的初始化检查
 
@@ -349,14 +390,18 @@ export default function Home() {
         addBuildLog('✅ Sandbox服务器启动成功！');
         addBuildLog(`🔗 预览地址: ${data.url}`);
 
-        // 使用WebSocket状态管理，不需要手动设置状态
-        // 预览URL和状态由WebSocket自动管理
+        // 如果WebSocket状态没有及时更新，手动设置状态
+        if (projectStatus === 'stopped' || projectStatus === 'error') {
+          console.log('⚠️ WebSocket状态未及时更新，手动设置状态');
+          // 这里我们不能直接修改WebSocket状态，但可以添加日志
+          addBuildLog('⚠️ 等待WebSocket状态同步...');
+        }
 
-        // 延迟自动切换到预览标签
+        // 延迟自动切换到预览标签，给WebSocket状态更新一些时间
         setTimeout(() => {
           addBuildLog('🌐 预览已就绪，自动切换到预览标签');
           setActiveTab('preview');
-        }, 2000);
+        }, 3000);
       } else {
         throw new Error(data.error || 'Sandbox启动失败');
       }
@@ -599,6 +644,7 @@ export default function Home() {
 
     // 如果项目未运行，自动启动
     if (projectStatus === 'stopped') {
+      console.log('🚀 点击预览标签，自动启动项目');
       await startProject();
     }
   };
@@ -808,23 +854,44 @@ export default function Home() {
         ) : activeTab === 'preview' ? (
           /* 预览区域 */
           <div className="flex-1 flex flex-col">
-            {projectStatus === 'running' && previewUrl ? (
-              <iframe
-                key={previewKey}
-                ref={iframeRef}
-                src={previewUrl}
-                className="w-full h-full border-0"
-                title="项目预览"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
-                onLoad={() => {
-                  console.log('✅ iframe加载完成:', previewUrl);
-                  addBuildLog('🌐 预览页面加载完成');
-                }}
-                onError={() => {
-                  console.error('❌ iframe加载错误:', previewUrl);
-                  addBuildLog('❌ 预览页面加载失败');
-                }}
-              />
+            {isPreviewReady ? (
+              <div className="flex-1 flex flex-col">
+                {/* 预览状态栏 */}
+                <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">预览运行中</span>
+                    <span className="text-xs text-gray-500">({effectivePreviewUrl})</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPreviewKey(prev => prev + 1);
+                      addBuildLog('🔄 手动刷新预览');
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    刷新预览
+                  </button>
+                </div>
+
+                {/* iframe预览 */}
+                <iframe
+                  key={previewKey}
+                  ref={iframeRef}
+                  src={effectivePreviewUrl || ''}
+                  className="flex-1 w-full border-0"
+                  title="项目预览"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
+                  onLoad={() => {
+                    console.log('✅ iframe加载完成:', effectivePreviewUrl);
+                    addBuildLog('🌐 预览页面加载完成');
+                  }}
+                  onError={() => {
+                    console.error('❌ iframe加载错误:', effectivePreviewUrl);
+                    addBuildLog('❌ 预览页面加载失败');
+                  }}
+                />
+              </div>
             ) : (
               <div className="flex-1 flex items-center justify-center bg-gray-50">
                 <div className="text-center">

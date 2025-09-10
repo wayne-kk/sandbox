@@ -77,7 +77,8 @@ RUN npm install -g pnpm && \
     pnpm config set cache-dir /app/.cache/pnpm/cache && \
     pnpm install --prod --frozen-lockfile --prefer-offline
 
-RUN mkdir -p /app/data && chown -R nextjs:nodejs /app
+RUN mkdir -p /app/data /app/sandbox && \
+    chown -R nextjs:nodejs /app/data /app/sandbox
 
 USER nextjs
 EXPOSE 3000

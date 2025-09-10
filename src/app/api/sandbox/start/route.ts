@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { PORTS, findRunningSandboxPort, findAvailableSandboxPort, getSandboxUrl, checkPortAvailable } from '@/lib/constants/ports';
+import { ProjectWebSocketManager } from '@/lib/project-websocket';
 
 const execAsync = promisify(exec);
 
@@ -29,6 +30,11 @@ export async function POST() {
         const isPort3100InUse = !(await checkPortAvailable(3100));
         if (isPort3100InUse) {
             console.log('⚠️ 3100端口已被占用，Sandbox服务器可能已在运行');
+
+            // 通知WebSocket状态变化
+            const wsManager = ProjectWebSocketManager.getInstance();
+            wsManager.onProjectStatusChange('default-project', 'running', getSandboxUrl(3100));
+
             return NextResponse.json({
                 success: true,
                 message: 'Sandbox 服务器已在运行',
@@ -100,6 +106,10 @@ export async function POST() {
             }
         }
 
+        // 通知WebSocket状态变化 - 开始启动
+        const wsManager = ProjectWebSocketManager.getInstance();
+        wsManager.onProjectStatusChange('default-project', 'starting', '');
+
         // 启动开发服务器 - 强制使用3100端口
         const startCommand = 'cd sandbox && pnpm run dev';
 
@@ -107,6 +117,8 @@ export async function POST() {
         const childProcess = exec(startCommand, (error, stdout, stderr) => {
             if (error) {
                 console.error('启动 Sandbox 服务器失败:', error);
+                // 通知WebSocket启动失败
+                wsManager.onProjectError('default-project', `启动失败: ${error.message}`);
                 return;
             }
             console.log('Sandbox 服务器输出:', stdout);
@@ -115,9 +127,32 @@ export async function POST() {
             }
         });
 
-        // 等待服务器启动
+        // 等待服务器启动并检测状态
         console.log('⏳ 等待 Sandbox 服务器启动...');
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // 检测服务器是否真正启动
+        let serverStarted = false;
+        for (let i = 0; i < 10; i++) {
+            const isPortInUse = !(await checkPortAvailable(3100));
+            if (isPortInUse) {
+                serverStarted = true;
+                console.log('✅ 检测到服务器已启动');
+                break;
+            }
+            console.log(`⏳ 等待服务器启动... (${i + 1}/10)`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        if (serverStarted) {
+            // 通知WebSocket状态变化 - 启动完成
+            wsManager.onProjectStatusChange('default-project', 'running', getSandboxUrl(3100));
+            console.log('📡 已通知WebSocket状态更新为running');
+        } else {
+            // 通知WebSocket启动失败
+            wsManager.onProjectError('default-project', '服务器启动超时');
+            console.log('❌ 服务器启动超时');
+        }
 
         return NextResponse.json({
             success: true,
@@ -128,6 +163,11 @@ export async function POST() {
 
     } catch (error) {
         console.error('启动 Sandbox 服务器失败:', error);
+
+        // 通知WebSocket启动失败
+        const wsManager = ProjectWebSocketManager.getInstance();
+        wsManager.onProjectError('default-project', `启动失败: ${error instanceof Error ? error.message : '未知错误'}`);
+
         return NextResponse.json({
             success: false,
             error: error instanceof Error ? error.message : '启动失败'
