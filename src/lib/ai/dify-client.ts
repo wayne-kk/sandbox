@@ -101,7 +101,7 @@ export class DifyClient {
 
                 // 创建 AbortController 用于超时控制
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 30秒超时
 
                 const response = await fetch(this.apiEndpoint, {
                     method: 'POST',
