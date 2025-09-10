@@ -8,7 +8,9 @@ COPY sandbox/ .
 
 # 安装依赖
 RUN npm config set registry https://registry.npmmirror.com
-RUN npm config set timeout 300000
+RUN npm config set fetch-timeout 300000
+RUN npm config set fetch-retry-mintimeout 20000
+RUN npm config set fetch-retry-maxtimeout 120000
 RUN npm install
 
 # 创建非root用户
