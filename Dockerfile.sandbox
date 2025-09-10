@@ -7,8 +7,9 @@ WORKDIR /app
 COPY sandbox/ .
 
 # 安装依赖
-RUN npm install -g pnpm
-RUN pnpm install
+RUN npm config set registry https://registry.npmmirror.com
+RUN npm config set timeout 300000
+RUN npm install
 
 # 创建非root用户
 RUN addgroup --system --gid 1001 nodejs && \
@@ -26,4 +27,4 @@ ENV HOSTNAME="0.0.0.0"
 EXPOSE 3100
 
 # 启动命令
-CMD ["pnpm", "run", "dev"]
+CMD ["npm", "run", "dev"]
