@@ -109,8 +109,7 @@ events {
 
 http {
     # 重要：添加iframe相关的安全头
-    add_header X-Frame-Options SAMEORIGIN always;
-    add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    add_header Content-Security-Policy "frame-ancestors 'self' *.wayne.beer" always;
     
     # 主应用代理
     upstream main-app {
@@ -177,7 +176,6 @@ http {
             # 重要：iframe相关配置
             proxy_hide_header X-Frame-Options;
             proxy_hide_header Content-Security-Policy;
-            add_header X-Frame-Options SAMEORIGIN always;
             
             # WebSocket 支持（热重载）
             proxy_http_version 1.1;
