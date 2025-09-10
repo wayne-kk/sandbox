@@ -91,7 +91,7 @@ export function getSandboxUrl(port?: number): string {
         return devUrl;
     }
 
-    // 生产环境：优先使用环境变量配置的URL
+    // 生产环境：使用路径分离方案，通过 Nginx 代理
     const productionUrl = process.env.NEXT_PUBLIC_SANDBOX_PREVIEW_URL ||
         process.env.SANDBOX_PREVIEW_URL ||
         'http://115.190.100.24/sandbox/';
