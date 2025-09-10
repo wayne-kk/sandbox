@@ -63,19 +63,13 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# 复制构建产物
+# 复制构建产物和依赖（避免重复安装）
 COPY --from=base /app/public ./public
 COPY --from=base /app/.next/standalone ./
 COPY --from=base /app/.next/static ./.next/static
 COPY --from=base /app/prisma ./prisma
-
-# 安装生产依赖
-COPY package.json pnpm-lock.yaml* ./
-RUN npm install -g pnpm && \
-    pnpm config set registry https://registry.npmmirror.com && \
-    pnpm config set store-dir /app/.cache/pnpm/store && \
-    pnpm config set cache-dir /app/.cache/pnpm/cache && \
-    pnpm install --prod --frozen-lockfile --prefer-offline
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/package.json ./package.json
 
 RUN mkdir -p /app/data /app/sandbox && \
     chown -R nextjs:nodejs /app/data /app/sandbox

@@ -57,7 +57,7 @@ const nextConfig: NextConfig = {
           // 允许iframe嵌入
           {
             key: 'X-Frame-Options',
-            value: 'SAMEORIGIN',
+            value: 'ALLOWALL',
           },
         ],
       },
