@@ -1,172 +1,182 @@
 // FinanceHero.tsx
 "use client";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, ShieldCheck, TrendingUp } from "lucide-react";
+import { ArrowRight, ShieldCheck, BarChart2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { toast } from "sonner";
 
-// Brand palette and neutral/accent colors (for reference, should be set in Tailwind config):
+// Color system (example):
 // brand.primary: #2563eb (blue-600)
-// neutral.900: #0f172a (slate-900)
-// neutral.50: #f8fafc (slate-50)
-// accent.1: #38bdf8 (sky-400)
-// accent.2: #facc15 (yellow-400)
-// success: #22c55e (green-500)
-// warning: #f59e42 (orange-400)
-// error: #ef4444 (red-500)
-// info: #0ea5e9 (sky-500)
-
-// Mock feature items
-const features = [
-  {
-    icon: <TrendingUp className="text-accent-1 w-6 h-6" aria-hidden />,
-    title: "Smart Portfolio Growth",
-    desc: "AI-driven insights to maximize your wealth.",
-  },
-  {
-    icon: <ShieldCheck className="text-accent-2 w-6 h-6" aria-hidden />,
-    title: "Trusted Security",
-    desc: "Your data and assets are protected 24/7.",
-  },
-  {
-    icon: <ArrowRight className="text-brand-primary w-6 h-6" aria-hidden />,
-    title: "Seamless Transfers",
-    desc: "Move funds instantly, worldwide.",
-  },
-];
-
-// Unsplash finance-themed hero images
-const heroImages = [
-  "https://images.unsplash.com/photo-1515168833906-d2a3b82b36ab?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80",
-];
+// neutral.1: #f8fafc (slate-50)
+// neutral.2: #334155 (slate-700)
+// accent.1: #22d3ee (cyan-400)
+// accent.2: #f59e42 (orange-400)
 
 export type FinanceHeroProps = Partial<{
-  headline: string;
-  subheadline: string;
+  title: string;
+  subtitle: string;
   ctaLabel: string;
-  ctaPlaceholder: string;
+  onCta: () => void;
   imageUrl: string;
-  features: typeof features;
+  features: { icon: React.ReactNode; label: string; description: string }[];
+  stats: { label: string; value: string }[];
+  newsletterLabel: string;
 }>;
 
-const defaultHeadline = "Empower Your Financial Future";
-const defaultSubheadline =
-  "Manage, grow and protect your wealth with our secure, AI-driven platform. Trusted by over 500,000 investors.";
-const defaultCtaLabel = "Get Started";
-const defaultCtaPlaceholder = "Enter your email";
+const mockFeatures = [
+  {
+    icon: <ShieldCheck className="text-brand-primary w-6 h-6" />,
+    label: "Bank-level Security",
+    description: "Your data is encrypted and protected."
+  },
+  {
+    icon: <BarChart2 className="text-accent-1 w-6 h-6" />,
+    label: "Real-time Analytics",
+    description: "Track your portfolio with up-to-date insights."
+  },
+  {
+    icon: <ArrowRight className="text-accent-2 w-6 h-6" />,
+    label: "Easy Transfers",
+    description: "Move funds instantly, with no hidden fees."
+  }
+];
+
+const mockStats = [
+  { label: "Active Users", value: "120K+" },
+  { label: "Assets Managed", value: "$8.2B" },
+  { label: "Avg. Growth", value: "16%/yr" }
+];
 
 export default function FinanceHero({
-  headline = defaultHeadline,
-  subheadline = defaultSubheadline,
-  ctaLabel = defaultCtaLabel,
-  ctaPlaceholder = defaultCtaPlaceholder,
-  imageUrl = heroImages[0],
-  features: featureList = features,
+  title = "Modern Finance, Simplified.",
+  subtitle = "All-in-one banking, investing, and analytics platform. Secure your future with trustworthy technology.",
+  ctaLabel = "Get Started Free",
+  onCta = () => toast.success("Welcome to FinTrust!"),
+  imageUrl = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80",
+  features = mockFeatures,
+  stats = mockStats,
+  newsletterLabel = "Subscribe for updates",
 }: FinanceHeroProps) {
   const [email, setEmail] = useState("");
-  
-  function handleCta(e: React.FormEvent) {
+
+  const handleNewsletter = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.match(/^[\w\-.]+@[\w-]+\.[\w-.]+$/)) {
-      toast.error("Please enter a valid email address.");
-      return;
+    if (email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
+      toast.success("Thank you for subscribing!");
+      setEmail("");
+    } else {
+      toast.error("Please enter a valid email.");
     }
-    toast.success("Thank you! We'll be in touch soon.");
-    setEmail("");
-  }
+  };
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 32 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="w-full bg-neutral-50 dark:bg-neutral-900 py-16 md:py-24"
-      aria-label="Finance site hero section"
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: 0.26 } }}
+      className="w-full bg-neutral-1 dark:bg-neutral-2 py-20 px-4 md:px-10"
     >
-      <div className="container mx-auto max-w-7xl px-4 flex flex-col md:flex-row items-center gap-12 md:gap-16">
-        {/* Left Content */}
-        <div className="flex-1 flex flex-col items-start gap-8 max-w-xl">
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, delay: 0.05 }}
-            className="font-sans text-4xl lg:text-5xl font-bold text-brand-primary dark:text-brand-primary mb-2 leading-tight"
-          >
-            {headline}
-          </motion.h1>
-          <p className="font-sans text-lg md:text-xl text-neutral-700 dark:text-neutral-100 leading-relaxed mb-2">
-            {subheadline}
+      <div className="max-w-7xl mx-auto flex flex-col-reverse lg:flex-row items-center gap-12">
+        {/* Left: Content */}
+        <div className="flex-1 flex flex-col items-start gap-8">
+          <h1 className="font-sans text-3xl md:text-5xl font-bold text-brand-primary dark:text-white leading-tight">
+            {title}
+          </h1>
+          <p className="font-sans text-lg md:text-xl text-neutral-2 dark:text-neutral-1 leading-relaxed max-w-2xl">
+            {subtitle}
           </p>
-          {/* CTA Form */}
-          <form
-            onSubmit={handleCta}
-            className="flex flex-col sm:flex-row gap-4 w-full"
-            aria-label="Get started form"
-          >
-            <Input
-              type="email"
-              placeholder={ctaPlaceholder}
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className="flex-1 bg-white dark:bg-neutral-800 shadow-sm focus:ring-brand-primary"
-              aria-label="Email address"
-              autoComplete="email"
-            />
-            <Button
-              type="submit"
-              className="bg-brand-primary hover:bg-accent-1 text-white shadow-lg font-semibold px-6 py-3 rounded-lg transition-colors"
-              size="lg"
+          {/* Stats */}
+          <div className="flex gap-8 md:gap-12">
+            {stats.map((s, i) => (
+              <div key={i} className="flex flex-col items-start">
+                <span className="font-serif text-2xl md:text-3xl font-semibold text-brand-primary dark:text-accent-1">
+                  {s.value}
+                </span>
+                <span className="font-sans text-base text-neutral-2 dark:text-neutral-1">
+                  {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
+          {/* CTA & Newsletter */}
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full">
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              transition={{ duration: 0.18 }}
+              className="shadow-lg"
             >
-              {ctaLabel} <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </form>
-          {/* Features Row */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-4">
-            {featureList.map((feature, i) => (
-              <Card
-                key={feature.title}
-                className="shadow-md bg-white dark:bg-neutral-800 border-0 flex-1 min-w-[220px]"
+              <Button
+                size="lg"
+                onClick={onCta}
+                className="text-white bg-brand-primary hover:bg-accent-1 shadow-xl px-8 py-4 rounded-lg font-sans text-base font-semibold"
               >
-                <CardContent className="flex items-start gap-3 p-4">
-                  {feature.icon}
-                  <div>
-                    <h3 className="font-sans text-base font-semibold text-neutral-900 dark:text-neutral-50">
-                      {feature.title}
-                    </h3>
-                    <p className="font-sans text-sm text-neutral-700 dark:text-neutral-200 leading-6">
-                      {feature.desc}
-                    </p>
+                {ctaLabel}
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </motion.div>
+            <form
+              className="flex items-center gap-2 mt-1"
+              onSubmit={handleNewsletter}
+              aria-label="Newsletter signup"
+            >
+              <Input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Your email"
+                className="w-44 md:w-56 px-3 py-2 text-base rounded-md shadow-sm bg-white dark:bg-neutral-2 border border-neutral-2 dark:border-neutral-1"
+                aria-label="Email"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-accent-1 hover:bg-brand-primary text-neutral-2 font-sans shadow-md"
+                aria-label={newsletterLabel}
+              >
+                Subscribe
+              </Button>
+            </form>
+          </div>
+          {/* Features */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2 w-full max-w-2xl">
+            {features.map((f, i) => (
+              <Card
+                key={i}
+                className="flex flex-row items-center gap-3 p-4 shadow-md bg-white dark:bg-neutral-2"
+              >
+                <div>{f.icon}</div>
+                <div>
+                  <div className="font-sans font-semibold text-base text-brand-primary dark:text-accent-1">
+                    {f.label}
                   </div>
-                </CardContent>
+                  <div className="font-sans text-sm text-neutral-2 dark:text-neutral-1 leading-6">
+                    {f.description}
+                  </div>
+                </div>
               </Card>
             ))}
           </div>
         </div>
-        {/* Right Image */}
+        {/* Right: Image */}
         <motion.div
-          initial={{ opacity: 0, x: 40 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.22, delay: 0.1 }}
-          className="flex-1 hidden md:block"
+          initial={{ scale: 0.96, opacity: 0.7 }}
+          animate={{ scale: 1, opacity: 1, transition: { duration: 0.22 } }}
+          className="flex-1 flex justify-center items-center w-full max-w-xl"
         >
-          <div className="relative w-full max-w-md mx-auto aspect-[4/3] shadow-xl rounded-2xl overflow-hidden">
+          <div className="relative w-full h-80 md:h-96 rounded-2xl shadow-2xl overflow-hidden">
             <Image
               src={imageUrl}
-              alt="Finance platform hero"
+              alt="Finance dashboard preview"
               fill
-              sizes="(max-width: 768px) 100vw, 400px"
-              className="object-cover object-center"
+              className="object-cover rounded-2xl"
               priority
+              sizes="(max-width: 768px) 100vw, 40vw"
             />
-            {/* Light overlay gradient for readability */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-white/70 via-white/30 to-brand-primary/10 dark:from-neutral-900/60 dark:via-neutral-900/30 dark:to-brand-primary/10 pointer-events-none" />
+            {/* Optional overlay gradient for legibility (light only) */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/80 via-brand-primary/10 to-transparent dark:from-neutral-2/80 dark:via-brand-primary/30 pointer-events-none" />
           </div>
         </motion.div>
       </div>
