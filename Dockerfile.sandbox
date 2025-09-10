@@ -1,0 +1,29 @@
+# Sandbox 专用 Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# 复制 sandbox 目录
+COPY sandbox/ .
+
+# 安装依赖
+RUN npm install -g pnpm
+RUN pnpm install
+
+# 创建非root用户
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# 设置权限
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# 环境变量
+ENV NODE_ENV=development
+ENV PORT=3100
+ENV HOSTNAME="0.0.0.0"
+
+EXPOSE 3100
+
+# 启动命令
+CMD ["pnpm", "run", "dev"]

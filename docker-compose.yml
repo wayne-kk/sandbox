@@ -65,8 +65,7 @@ services:
   sandbox:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: sandbox
+      dockerfile: Dockerfile.sandbox
     container_name: v0-sandbox-preview
     ports:
       - "3100:3100"
@@ -77,9 +76,7 @@ services:
       - PORT=3100
       - HOSTNAME=0.0.0.0
     volumes:
-      - ./sandbox:/app/sandbox:rw
-    working_dir: /app/sandbox
-    command: ["sh", "-c", "cd /app/sandbox && pnpm run dev"]
+      - ./sandbox:/app:rw
     restart: unless-stopped
     networks:
       - v0-sandbox-network
