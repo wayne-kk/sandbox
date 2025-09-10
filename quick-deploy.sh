@@ -84,33 +84,33 @@ if [ -d ".git" ]; then
     git pull origin main 2>/dev/null || echo "⚠️  Git拉取失败，继续使用当前代码"
 fi
 
-
 # 修复sandbox配置
 echo "🔧 修复sandbox配置..."
 if [ -f "sandbox/package.json" ]; then
+    # 备份原文件
+    cp sandbox/package.json sandbox/package.json.bak
+    
     # 更新启动脚本，使用0.0.0.0 hostname
     sed -i 's/"dev": "next dev --turbopack --port 3100"/"dev": "next dev --port 3100 --hostname 0.0.0.0"/' sandbox/package.json
     echo "✅ 已修复sandbox启动配置"
 fi
 
-       # 检查是否需要重新构建
-       if [ "$NEED_REBUILD" = true ]; then
-           echo "🔨 重新构建应用..."
-           
-           # 如果检测到sandbox变化，进行完全重建
-           if git diff HEAD~1 --name-only 2>/dev/null | grep -q "sandbox/"; then
-               echo "🧹 检测到sandbox变化，进行完全重建..."
-               docker system prune -f
-               docker builder prune -f
-               docker rmi v0-sandbox-app 2>/dev/null || true
-           fi
-           
-           # 使用并行构建和缓存优化
-           echo "⚡ 使用优化构建配置..."
-           DOCKER_BUILDKIT=1 docker compose --progress=plain build --parallel
-       else
-           echo "⚡ 使用现有镜像，跳过构建"
-       fi
+# 检查是否需要重新构建
+if [ "$NEED_REBUILD" = true ]; then
+    echo "🔨 重新构建应用..."
+    
+    # 如果检测到sandbox变化，进行完全重建
+    if git diff HEAD~1 --name-only 2>/dev/null | grep -q "sandbox/"; then
+        echo "🧹 检测到sandbox变化，进行完全重建..."
+        docker system prune -f
+        docker builder prune -f
+        docker rmi v0-sandbox-app 2>/dev/null || true
+    fi
+    
+    docker compose build --no-cache
+else
+    echo "⚡ 使用现有镜像，跳过构建"
+fi
 
 # 启动服务
 echo "🚀 启动服务..."
@@ -126,12 +126,10 @@ docker compose ps
 
 # 测试访问
 echo "🧪 测试访问..."
-HEALTH_RESPONSE=$(curl -s http://localhost:3000/api/health 2>/dev/null)
-if [ $? -eq 0 ] && echo "$HEALTH_RESPONSE" | grep -q "healthy"; then
+if curl -f http://localhost:3000/api/health >/dev/null 2>&1; then
     echo "✅ 主服务正常"
 else
-    echo "⚠️  主服务响应异常，但可能仍在运行"
-    echo "   响应: $HEALTH_RESPONSE"
+    echo "❌ 主服务异常"
 fi
 
 # 测试Sandbox启动
@@ -170,7 +168,8 @@ echo ""
 echo "🔧 管理命令:"
 echo "  - 查看日志: docker compose logs -f"
 echo "  - 重启服务: docker compose restart"
-echo "  - 停止服务: docker compose down"echo ""
+echo "  - 停止服务: docker compose down"
+echo ""
 echo "💡 功能说明:"
 echo "  - 自动检测代码变化并重新构建"
 echo "  - 检测到sandbox变化时进行完全重建"

@@ -23,28 +23,19 @@ export async function POST() {
             }, { status: 404 });
         }
 
-        // 强制使用3100端口，如果被占用就kill掉
+        // 检查3100端口是否被占用，如果被占用就直接返回
         console.log('🔍 检查3100端口是否被占用...');
-        const isPort3100InUse = !(await checkPortAvailable(3100));
 
+        const isPort3100InUse = !(await checkPortAvailable(3100));
         if (isPort3100InUse) {
-            console.log('⚠️ 3100端口被占用，正在kill掉占用进程...');
-            try {
-                // 查找占用3100端口的进程并kill掉
-                const { stdout: pidOutput } = await execAsync('lsof -ti:3100');
-                if (pidOutput.trim()) {
-                    const pids = pidOutput.trim().split('\n');
-                    for (const pid of pids) {
-                        console.log(`🔪 正在kill进程 ${pid}...`);
-                        await execAsync(`kill -9 ${pid}`);
-                    }
-                    console.log('✅ 已kill掉占用3100端口的进程');
-                    // 等待一下让端口释放
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
-            } catch (error) {
-                console.warn('kill进程时出错:', error);
-            }
+            console.log('⚠️ 3100端口已被占用，Sandbox服务器可能已在运行');
+            return NextResponse.json({
+                success: true,
+                message: 'Sandbox 服务器已在运行',
+                port: 3100,
+                url: getSandboxUrl(3100),
+                alreadyRunning: true
+            });
         }
 
         // 先检查是否需要安装依赖

@@ -15,6 +15,41 @@ export const PORTS = {
     PREVIEW: 3100,
 } as const;
 
+// 获取本机IP地址
+function getLocalIP(): string {
+    try {
+        const os = require('os');
+        const interfaces = os.networkInterfaces();
+
+        // 优先获取局域网IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+        const localNetworks = ['192.168.', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.'];
+
+        for (const name of Object.keys(interfaces)) {
+            for (const iface of interfaces[name]) {
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    // 优先返回局域网IP
+                    if (localNetworks.some(network => iface.address.startsWith(network))) {
+                        return iface.address;
+                    }
+                }
+            }
+        }
+
+        // 如果没有找到局域网IP，返回第一个非内部IP
+        for (const name of Object.keys(interfaces)) {
+            for (const iface of interfaces[name]) {
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    return iface.address;
+                }
+            }
+        }
+    } catch (error) {
+        console.warn('无法获取本机IP地址:', error);
+    }
+
+    return 'localhost';
+}
+
 // 获取服务器地址
 export function getServerHost(): string {
     // 优先使用环境变量
@@ -22,10 +57,10 @@ export function getServerHost(): string {
         return process.env.SERVER_HOST;
     }
 
-    // 在服务器端，尝试获取公网IP
+    // 在服务器端，尝试获取本机IP
     if (typeof window === 'undefined') {
         // 服务器端逻辑
-        return process.env.NEXT_PUBLIC_SERVER_HOST || 'localhost';
+        return process.env.NEXT_PUBLIC_SERVER_HOST || getLocalIP();
     }
 
     // 客户端逻辑
@@ -40,13 +75,15 @@ export function getSandboxUrl(port?: number): string {
         process.env.NEXT_PUBLIC_NODE_ENV === 'development' ||
         !process.env.NODE_ENV;
 
-    // 开发环境使用 localhost
+    // 开发环境使用本机IP地址
     if (isDevelopment) {
         const devPort = port || PORTS.SANDBOX_DEFAULT;
-        const devUrl = `http://localhost:${devPort}`;
+        const host = getServerHost();
+        const devUrl = `http://${host}:${devPort}`;
 
         console.log('🔍 开发环境 Sandbox URL:', {
             port: devPort,
+            host: host,
             url: devUrl,
             isDevelopment: true
         });
@@ -93,10 +130,14 @@ export async function checkPortAvailable(port: number): Promise<boolean> {
         const { promisify } = await import('util');
         const execAsync = promisify(exec);
 
-        const { stdout } = await execAsync(`lsof -ti:${port}`);
-        return !stdout.trim();
+        const { stdout } = await execAsync(`lsof -ti:${port}`, { timeout: 5000 });
+        const isInUse = stdout.trim().length > 0;
+
+        console.log(`🔍 端口 ${port} 状态: ${isInUse ? '被占用' : '可用'}`);
+        return !isInUse;
     } catch (error) {
         // 如果命令失败，假设端口可用
+        console.log(`🔍 端口 ${port} 检查失败，假设可用:`, error);
         return true;
     }
 }
