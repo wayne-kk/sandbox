@@ -91,10 +91,10 @@ export function getSandboxUrl(port?: number): string {
         return devUrl;
     }
 
-    // 生产环境：使用路径分离方案，通过 Nginx 代理
+    // 生产环境：使用子域名方案，sandbox.wayne.beer
     const productionUrl = process.env.NEXT_PUBLIC_SANDBOX_PREVIEW_URL ||
         process.env.SANDBOX_PREVIEW_URL ||
-        'http://115.190.100.24/sandbox/';
+        'http://sandbox.wayne.beer/';
 
     // 添加调试日志
     console.log('🔍 生产环境 Sandbox URL:', {
