@@ -78,8 +78,7 @@ services:
       - ./sandbox:/app:rw
     restart: unless-stopped
     networks:
-      - v0-sandbox-network
-
+      - v0-sandbox-networz怎么
 
   # Nginx 服务
   nginx:
