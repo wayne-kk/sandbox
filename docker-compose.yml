@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
       target: runner
     container_name: v0-sandbox-app
+    user: "1001:1001"
     ports:
       - "3000:3000"
     env_file:

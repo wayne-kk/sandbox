@@ -84,8 +84,14 @@ if [ -d ".git" ]; then
     git pull origin main 2>/dev/null || echo "⚠️  Git拉取失败，继续使用当前代码"
 fi
 
-# 修复sandbox配置
-echo "🔧 修复sandbox配置..."
+# 修复sandbox配置和权限
+echo "🔧 修复sandbox配置和权限..."
+
+# 修复文件权限
+echo "🔐 修复sandbox目录权限..."
+sudo chown -R 1001:1001 sandbox/ 2>/dev/null || true
+chmod -R 755 sandbox/ 2>/dev/null || true
+
 if [ -f "sandbox/package.json" ]; then
     # 备份原文件
     cp sandbox/package.json sandbox/package.json.bak
