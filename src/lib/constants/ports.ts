@@ -75,15 +75,14 @@ export function getSandboxUrl(port?: number): string {
         process.env.NEXT_PUBLIC_NODE_ENV === 'development' ||
         !process.env.NODE_ENV;
 
-    // 开发环境使用本机IP地址
+    // 开发环境使用 localhost
     if (isDevelopment) {
         const devPort = port || PORTS.SANDBOX_DEFAULT;
-        const host = getServerHost();
-        const devUrl = `http://${host}:${devPort}`;
+        const devUrl = `http://localhost:${devPort}`;
 
         console.log('🔍 开发环境 Sandbox URL:', {
             port: devPort,
-            host: host,
+            host: 'localhost',
             url: devUrl,
             isDevelopment: true
         });

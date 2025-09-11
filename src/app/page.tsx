@@ -116,6 +116,14 @@ export default function Home() {
               <span>AI 生成器</span>
             </a>
 
+            <a
+              href="/preview/sandbox-project"
+              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors flex items-center space-x-1"
+            >
+              <span>👁️</span>
+              <span>独立预览页面</span>
+            </a>
+
             <button
               onClick={() => setShowGitHubSetup(true)}
               className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors flex items-center space-x-1"

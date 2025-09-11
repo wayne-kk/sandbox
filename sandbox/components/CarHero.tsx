@@ -2,219 +2,218 @@
 "use client";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Car, ArrowRight, Star } from "lucide-react";
+import { ArrowRight, Star, Car, Info } from "lucide-react";
 
-// 1 Brand color (blue), 3 neutrals (white, gray, black), 1 accent (orange)
-// Colors used: #2563eb (blue-600), #fff (white), #f3f4f6 (gray-100), #1f2937 (gray-800), #f59e42 (orange-400)
-// TOTAL COLORS: 5
+// Color system (warm, for retail/auto)
+// brand.primary: #E4572E
+// neutral.100: #FFF8F6
+// neutral.700: #2D2D2D
+// accent.1: #FFC857
+// accent.2: #29335C
 
 export type CarHeroProps = Partial<{
-  headline: string;
-  subheading: string;
-  cars: {
+  title: string;
+  subtitle: string;
+  cars: Array<{
     id: string;
     name: string;
-    image: string;
+    description: string;
+    imageUrl: string;
     price: string;
     rating: number;
-    tags: string[];
-  }[];
-  primaryColor: string;
-  accentColor: string;
+    isFeatured?: boolean;
+  }>;
+  onExplore?: (carId: string) => void;
 }>;
 
 const mockCars = [
   {
-    id: "1",
-    name: "Tesla Model S",
-    image:
+    id: "mustang",
+    name: "Ford Mustang GT",
+    description: "Iconic American muscle meets modern tech. 5.0L V8, 450hp.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=800&q=80",
+    price: "$55,000",
+    rating: 4.7,
+    isFeatured: true,
+  },
+  {
+    id: "tesla",
+    name: "Tesla Model S Plaid",
+    description: "Luxury electric sedan, 0-60 in 1.99s, 396mi range.",
+    imageUrl:
       "https://images.unsplash.com/photo-1511918984145-48de785d4c4e?auto=format&fit=crop&w=800&q=80",
     price: "$89,990",
-    rating: 4.8,
-    tags: ["Electric", "Luxury"],
+    rating: 4.9,
+    isFeatured: false,
   },
   {
-    id: "2",
-    name: "BMW i8",
-    image:
-      "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=800&q=80",
-    price: "$147,500",
+    id: "camaro",
+    name: "Chevrolet Camaro ZL1",
+    description: "Supercharged V8, track-ready suspension and bold looks.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=800&q=80",
+    price: "$62,500",
     rating: 4.6,
-    tags: ["Hybrid", "Sport"],
+    isFeatured: false,
   },
   {
-    id: "3",
-    name: "Audi A6",
-    image:
-      "https://images.unsplash.com/photo-1461632830798-3adb3034e4c8?auto=format&fit=crop&w=800&q=80",
-    price: "$55,900",
+    id: "supra",
+    name: "Toyota GR Supra",
+    description: "Modern legend. Turbocharged inline-6, razor-sharp handling.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80",
+    price: "$54,500",
     rating: 4.5,
-    tags: ["Sedan", "Comfort"],
+    isFeatured: true,
   },
   {
-    id: "4",
-    name: "Ford Mustang",
-    image:
-      "https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=800&q=80",
-    price: "$42,300",
-    rating: 4.7,
-    tags: ["Classic", "Sport"],
-  },
-  {
-    id: "5",
-    name: "Toyota RAV4",
-    image:
+    id: "audi",
+    name: "Audi RS5 Coupe",
+    description: "Quattro AWD, twin-turbo V6, refined interior luxury.",
+    imageUrl:
       "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=800&q=80",
-    price: "$27,700",
-    rating: 4.3,
-    tags: ["SUV", "Family"],
+    price: "$75,900",
+    rating: 4.8,
+    isFeatured: false,
   },
 ];
 
 const CarHero: React.FC<CarHeroProps> = ({
-  headline = "Find Your Dream Car",
-  subheading = "Discover top-rated cars, compare features and choose the perfect ride for you.",
+  title = "Discover Your Dream Car",
+  subtitle = "Explore our exclusive collection of top-rated vehicles. Performance, luxury & style in one place.",
   cars = mockCars,
-  primaryColor = "#2563eb", // blue
-  accentColor = "#f59e42", // orange
+  onExplore = (id) => toast.success(`Explore details for car: ${id}`),
 }) => {
-  const [selectedCarIdx, setSelectedCarIdx] = useState(0);
+  const [selected, setSelected] = useState<string>(cars[0]?.id || "");
 
-  const selectedCar = cars[selectedCarIdx];
-
-  const handleContactDealer = () => {
-    toast.success(`Contact request for ${selectedCar.name} sent!`);
-  };
+  const selectedCar = cars.find((c) => c.id === selected) || cars[0];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
+    <motion.section
+      initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="w-full bg-white dark:bg-gray-800 px-8 py-12 flex flex-col md:flex-row items-center justify-between gap-8"
-      style={{ backgroundColor: "#fff" }}
+      className="w-full px-8 py-12 md:py-20 bg-[linear-gradient(120deg,#FFF8F6_0%,#FFC857_80%)]"
     >
-      {/* Left: Text */}
       <motion.div
-        initial={{ opacity: 0, x: -32 }}
-        animate={{ opacity: 1, x: 0 }}
+        className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12"
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.22 }}
-        className="flex flex-col gap-4 max-w-xl md:max-w-lg lg:max-w-2xl"
       >
-        <h1
-          className="text-3xl lg:text-5xl font-bold font-sans text-left"
-          style={{ color: primaryColor }}
+        {/* Hero Text */}
+        <div className="flex-1 min-w-[320px] md:max-w-lg flex flex-col gap-6">
+          <h1 className="text-4xl lg:text-5xl font-bold font-sans text-[#2D2D2D] leading-tight">
+            {title}
+          </h1>
+          <p className="text-lg font-sans text-[#29335C] leading-relaxed">
+            {subtitle}
+          </p>
+          {/* Featured badges */}
+          <div className="flex gap-3 flex-wrap mt-2">
+            {cars
+              .filter((c) => c.isFeatured)
+              .map((c) => (
+                <Badge
+                  key={c.id}
+                  className="bg-[#FFC857] text-[#2D2D2D] font-semibold px-4 py-2 shadow-md"
+                >
+                  <Star size={16} className="inline mr-1" />
+                  {c.name}
+                </Badge>
+              ))}
+          </div>
+        </div>
+        {/* Car Card */}
+        <motion.div
+          className="flex-1 min-w-[320px] md:max-w-xl"
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.22 }}
         >
-          <Car className="inline-block mr-2" size={36} style={{ color: accentColor }} />
-          {headline}
-        </h1>
-        <p className="text-base lg:text-xl text-gray-800 dark:text-gray-100 font-serif leading-relaxed mt-2">
-          {subheading}
-        </p>
-        <div className="flex gap-2 mt-4">
-          {selectedCar.tags.map((tag) => (
-            <Badge
-              key={tag}
-              className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100 px-3 py-1 rounded-full font-mono text-sm"
-            >
-              {tag}
-            </Badge>
-          ))}
-        </div>
-        <Separator className="my-6 bg-gray-100 dark:bg-gray-700" />
-        <div className="flex items-center gap-6">
-          <span className="text-lg lg:text-2xl font-bold font-sans" style={{ color: accentColor }}>
-            {selectedCar.price}
-          </span>
-          <span className="flex items-center gap-1 text-gray-800 dark:text-gray-100 font-mono">
-            <Star className="text-yellow-400" size={20} /> {selectedCar.rating}
-          </span>
-          <Button
-            size="lg"
-            className="shadow-lg bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-semibold flex gap-2"
-            style={{ backgroundColor: primaryColor }}
-            onClick={handleContactDealer}
-          >
-            Contact Dealer <ArrowRight size={18} />
-          </Button>
-        </div>
-      </motion.div>
-
-      {/* Right: Car Card */}
-      <motion.div
-        initial={{ opacity: 0, x: 32 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.22 }}
-        className="flex flex-col items-center gap-6"
-      >
-        <Card className="shadow-xl bg-white dark:bg-gray-800 p-0 w-[340px] max-w-xs">
-          <CardContent className="p-0">
-            <AnimatePresence mode="wait">
-              <motion.img
-                key={selectedCar.id}
-                src={selectedCar.image}
-                alt={selectedCar.name}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.19 }}
-                className="w-full h-[200px] object-cover rounded-t-xl"
-                style={{ background: "#f3f4f6" }}
-              />
-            </AnimatePresence>
-            <div className="p-4 flex flex-col gap-2">
-              <h2 className="text-xl font-bold font-sans text-gray-900 dark:text-gray-100">
-                {selectedCar.name}
-              </h2>
-              <div className="flex items-center gap-2">
-                <Star className="text-yellow-400" size={16} />
-                <span className="text-base font-mono text-gray-800 dark:text-gray-100">
-                  {selectedCar.rating} / 5
+          <Card className="shadow-xl bg-white/95 rounded-xl overflow-hidden border-0">
+            <CardHeader className="p-0">
+              <div className="w-full h-64 md:h-72 relative">
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={selectedCar.id}
+                    src={selectedCar.imageUrl}
+                    alt={selectedCar.name}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.28 }}
+                    className="object-cover w-full h-full"
+                    style={{ borderBottom: "4px solid #FFC857" }}
+                  />
+                </AnimatePresence>
+                <span className="absolute top-4 left-4 bg-[#E4572E] text-white px-3 py-1 rounded-full text-sm font-bold shadow-md flex items-center gap-1">
+                  <Car size={16} />
+                  {selectedCar.name}
                 </span>
               </div>
-              <span className="text-lg font-semibold font-sans" style={{ color: accentColor }}>
-                {selectedCar.price}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-        {/* Car selector */}
-        <div className="flex gap-4 mt-2">
-          {cars.map((car, idx) => (
-            <button
-              key={car.id}
-              className={`w-12 h-12 rounded-full border-2 flex items-center justify-center shadow ${
-                idx === selectedCarIdx
-                  ? "border-blue-600"
-                  : "border-gray-200 dark:border-gray-700"
-              } bg-gray-100 dark:bg-gray-800 transition-all duration-200`}
-              onClick={() => setSelectedCarIdx(idx)}
-              aria-label={car.name}
-              style={
-                idx === selectedCarIdx
-                  ? {
-                      borderColor: primaryColor,
-                      boxShadow: `0 0 0 2px ${accentColor}`,
+            </CardHeader>
+            <CardContent className="p-6 flex flex-col gap-2">
+              <p className="text-base md:text-lg font-sans text-[#29335C] font-semibold leading-6">
+                {selectedCar.description}
+              </p>
+              <div className="flex gap-4 items-center mt-2">
+                <span className="text-xl font-bold text-[#E4572E] font-sans">{selectedCar.price}</span>
+                <span className="flex items-center gap-1 text-[#29335C] font-semibold">
+                  <Star size={18} className="text-[#FFC857]" />
+                  {selectedCar.rating}
+                </span>
+              </div>
+            </CardContent>
+            <CardFooter className="p-6 flex justify-between gap-4">
+              <Button
+                size="lg"
+                className="bg-[#E4572E] hover:bg-[#FF6F4C] text-white font-bold shadow-lg px-6 py-2 rounded-lg"
+                onClick={() => {
+                  onExplore(selectedCar.id);
+                  toast(
+                    `${selectedCar.name}: Discover more details!`,
+                    {
+                      icon: <Info className="text-[#E4572E]" size={18} />,
                     }
-                  : undefined
-              }
-            >
-              <img
-                src={car.image}
-                alt={car.name}
-                className="w-10 h-10 object-cover rounded-full"
-                style={{ background: "#f3f4f6" }}
-              />
-            </button>
-          ))}
-        </div>
+                  );
+                }}
+              >
+                Explore Details
+                <ArrowRight className="ml-2" size={18} />
+              </Button>
+            </CardFooter>
+          </Card>
+          {/* Car selector thumbnails */}
+          <div className="flex gap-4 mt-6 justify-center flex-wrap">
+            {cars.map((c) => (
+              <motion.button
+                key={c.id}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.96 }}
+                className={`w-16 h-16 rounded-lg overflow-hidden border-2 shadow-md transition-all bg-[#FFF8F6] ${
+                  selected === c.id ? "border-[#E4572E]" : "border-transparent"
+                }`}
+                onClick={() => setSelected(c.id)}
+                aria-label={`Select ${c.name}`}
+              >
+                <img
+                  src={c.imageUrl}
+                  alt={c.name}
+                  className="object-cover w-full h-full"
+                />
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </motion.section>
   );
 };
 

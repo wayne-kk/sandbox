@@ -102,6 +102,16 @@ export class IframeOptimizedDockerManager {
                 // 网络可能已存在
             });
 
+            // 检查是否为开发环境
+            const isDevelopment = process.env.NODE_ENV === 'development' ||
+                process.env.NEXT_PUBLIC_NODE_ENV === 'development' ||
+                !process.env.NODE_ENV;
+
+            // 根据环境设置不同的 CSP 配置
+            const frameAncestors = isDevelopment
+                ? "'self' http://localhost:* http://127.0.0.1:*"  // 开发环境允许 localhost
+                : "'self' *.wayne.beer";  // 生产环境限制特定域名
+
             const nginxConfig = `
 events {
     worker_connections 1024;
@@ -109,7 +119,7 @@ events {
 
 http {
     # 重要：添加iframe相关的安全头
-    add_header Content-Security-Policy "frame-ancestors 'self' *.wayne.beer" always;
+    add_header Content-Security-Policy "frame-ancestors ${frameAncestors}" always;
     
     # 主应用代理
     upstream main-app {
