@@ -219,13 +219,25 @@ if [ "$NEED_REBUILD" = true ]; then
     export DOCKER_BUILDKIT=1
     export COMPOSE_DOCKER_CLI_BUILD=1
     
-    # 如果检测到sandbox变化，进行完全重建
-    if git diff HEAD~1 --name-only 2>/dev/null | grep -q "sandbox/"; then
-        echo "🧹 检测到sandbox变化，进行完全重建..."
+    # 构建优化环境变量
+    export BUILDKIT_PROGRESS=plain
+    export DOCKER_BUILDKIT_MULTI_PLATFORM=0
+    
+    # 检查具体变化类型
+    CHANGED_FILES=$(git diff HEAD~1 --name-only 2>/dev/null || echo "")
+    
+    if echo "$CHANGED_FILES" | grep -q "sandbox/package.json\|sandbox/pnpm-lock.yaml"; then
+        echo "📦 检测到依赖变化，进行完全重建..."
         docker system prune -f
         docker builder prune -f
         docker rmi v0-sandbox-app v0-sandbox-sandbox 2>/dev/null || true
         docker compose build --no-cache
+    elif echo "$CHANGED_FILES" | grep -q "sandbox/" && ! echo "$CHANGED_FILES" | grep -q "sandbox/package.json\|sandbox/pnpm-lock.yaml"; then
+        echo "📝 检测到sandbox代码变化，使用缓存构建..."
+        docker compose build
+    elif echo "$CHANGED_FILES" | grep -q "package.json\|Dockerfile\|docker-compose.yml"; then
+        echo "🔧 检测到主项目变化，使用缓存构建..."
+        docker compose build
     else
         echo "⚡ 使用缓存构建..."
         docker compose build
@@ -302,11 +314,12 @@ echo "  - 重启服务: docker compose restart"
 echo "  - 停止服务: docker compose down"
 echo ""
 echo "💡 功能说明:"
-echo "  - 自动检测代码变化并重新构建"
-echo "  - 检测到sandbox变化时进行完全重建"
+echo "  - 智能检测变化类型并选择构建策略"
+echo "  - 依赖变化时完全重建，代码变化时使用缓存"
 echo "  - 自动修复sandbox配置问题"
 echo "  - 验证sandbox代码更新"
 echo "  - 飞书通知部署状态"
+echo "  - 构建缓存优化，减少重复构建时间"
 
 # 错误处理函数
 handle_deployment_error() {
