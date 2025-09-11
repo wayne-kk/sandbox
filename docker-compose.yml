@@ -4,6 +4,10 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
+      cache_from:
+        - v0-sandbox-app:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
     container_name: v0-sandbox-app
     user: "1001:1001"
     ports:
@@ -65,6 +69,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.sandbox
+      cache_from:
+        - v0-sandbox-sandbox:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
     container_name: v0-sandbox-preview
     ports:
       - "3100:3100"

@@ -22,16 +22,6 @@ build
 logs
 *.log
 
-# 运行时数据
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# 覆盖率目录
-coverage
-.nyc_output
-
 # 缓存目录
 .cache
 .parcel-cache
@@ -54,11 +44,6 @@ Thumbs.db
 .git
 .gitignore
 
-# 文档
-README.md
-docs/
-*.md
-
 # 测试文件
 test/
 tests/
@@ -67,28 +52,3 @@ __tests__/
 *.test.ts
 *.spec.js
 *.spec.ts
-
-# 部署脚本
-deploy.sh
-ultra-quick-deploy.sh
-quick-deploy.sh
-
-# 监控配置
-monitoring/
-
-# 数据库文件
-*.db
-*.sqlite
-
-# 临时项目
-temp/
-
-# Sandbox 相关
-sandbox/node_modules
-sandbox/.next
-sandbox/out
-sandbox/dist
-sandbox/build
-sandbox/.cache
-sandbox/logs
-sandbox/*.log
