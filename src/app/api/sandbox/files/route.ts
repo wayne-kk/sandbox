@@ -244,4 +244,153 @@ function isValidFile(fileName: string): boolean {
     const validExtensions = ['.ts', '.tsx', '.js', '.jsx', '.json', '.md', '.css', '.scss', '.html'];
     return validExtensions.some(ext => fileName.endsWith(ext)) ||
         ['package.json', 'tsconfig.json', 'next.config.js', 'tailwind.config.js'].includes(fileName);
+}
+
+// 递归删除目录
+async function removeDirectoryRecursive(dirPath: string): Promise<void> {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+            await removeDirectoryRecursive(fullPath);
+        } else {
+            await fs.unlink(fullPath);
+        }
+    }
+
+    await fs.rmdir(dirPath);
+}
+
+// 检查并删除空的父级目录
+async function removeEmptyParentDirectories(dirPath: string, sandboxPath: string): Promise<string[]> {
+    const removedDirs: string[] = [];
+    let currentPath = path.dirname(dirPath);
+
+    // 确保不会删除 sandbox 目录本身
+    while (currentPath !== sandboxPath && currentPath !== path.dirname(sandboxPath)) {
+        try {
+            const entries = await fs.readdir(currentPath);
+
+            // 如果目录为空，删除它
+            if (entries.length === 0) {
+                await fs.rmdir(currentPath);
+                const relativePath = path.relative(sandboxPath, currentPath);
+                removedDirs.push(relativePath);
+                console.log(`🗑️ 删除空目录: ${relativePath}`);
+
+                // 继续检查上一级目录
+                currentPath = path.dirname(currentPath);
+            } else {
+                // 目录不为空，停止删除
+                break;
+            }
+        } catch (error) {
+            // 目录不存在或无法访问，停止删除
+            break;
+        }
+    }
+
+    return removedDirs;
+}
+
+// 删除路由文件夹
+export async function DELETE(request: NextRequest) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const routePath = searchParams.get('path');
+
+        if (!routePath) {
+            return NextResponse.json(
+                { success: false, error: 'Route path is required' },
+                { status: 400 }
+            );
+        }
+
+        const sandboxPath = path.join(process.cwd(), 'sandbox');
+        const fullPath = path.join(sandboxPath, routePath);
+
+        // 安全检查：确保路径在 sandbox 目录内
+        const resolvedPath = path.resolve(fullPath);
+        const resolvedSandboxPath = path.resolve(sandboxPath);
+
+        if (!resolvedPath.startsWith(resolvedSandboxPath)) {
+            return NextResponse.json(
+                { success: false, error: 'Invalid route path' },
+                { status: 403 }
+            );
+        }
+
+        // 检查路径是否存在
+        try {
+            const stats = await fs.stat(fullPath);
+            if (!stats.isDirectory()) {
+                return NextResponse.json(
+                    { success: false, error: 'Path is not a directory' },
+                    { status: 400 }
+                );
+            }
+        } catch {
+            return NextResponse.json(
+                { success: false, error: 'Route directory not found' },
+                { status: 404 }
+            );
+        }
+
+        // 检查是否为受保护的目录（不允许删除）
+        const protectedDirs = [
+            'app',
+            'components',
+            'lib',
+            'public',
+            'styles'
+        ];
+
+        // 只允许删除 app 目录下的子目录（路由目录）
+        if (!routePath.startsWith('app/') || routePath === 'app') {
+            return NextResponse.json(
+                { success: false, error: 'Can only delete route directories under app/' },
+                { status: 403 }
+            );
+        }
+
+        // 检查是否为重要路由目录（不允许删除）
+        const protectedRoutes = [
+            'app/layout.tsx',
+            'app/page.tsx',
+            'app/globals.css'
+        ];
+
+        if (protectedRoutes.some(protectedRoute => routePath.includes(protectedRoute))) {
+            return NextResponse.json(
+                { success: false, error: 'Cannot delete protected route' },
+                { status: 403 }
+            );
+        }
+
+        // 删除整个路由目录
+        await removeDirectoryRecursive(fullPath);
+
+        // 检查并删除空的父级目录
+        const removedParentDirs = await removeEmptyParentDirectories(fullPath, sandboxPath);
+
+        console.log(`✅ 路由目录删除成功: ${routePath}`);
+        if (removedParentDirs.length > 0) {
+            console.log(`🗑️ 同时删除了 ${removedParentDirs.length} 个空父级目录:`, removedParentDirs);
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: `Route directory deleted successfully: ${routePath}`,
+            deletedPath: routePath,
+            removedParentDirs: removedParentDirs
+        });
+
+    } catch (error) {
+        console.error('Error deleting route directory:', error);
+        return NextResponse.json(
+            { success: false, error: 'Failed to delete route directory' },
+            { status: 500 }
+        );
+    }
 } 

@@ -31,7 +31,8 @@ function ComponentPreview({
   componentPath, 
   routes, 
   selectedRoute, 
-  onRouteChange 
+  onRouteChange,
+  onDeleteRoute
 }: { 
   files: { [path: string]: string }; 
   projectId: string; 
@@ -40,6 +41,7 @@ function ComponentPreview({
   routes: RouteInfo[];
   selectedRoute: RouteInfo | null;
   onRouteChange: (route: RouteInfo) => void;
+  onDeleteRoute: (route: RouteInfo) => void;
 }) {
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
 
@@ -115,6 +117,18 @@ function ComponentPreview({
                 </option>
               ))}
             </select>
+            
+            {/* 删除按钮 */}
+            {selectedRoute && selectedRoute.path !== '/' && (
+              <button
+                onClick={() => onDeleteRoute(selectedRoute)}
+                className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border border-red-200 hover:border-red-300"
+                title={`删除路由: ${selectedRoute.name}`}
+              >
+                <span className="text-xs">🗑️</span>
+                <span>删除</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -275,6 +289,65 @@ export default function PreviewPage() {
     console.log('🔄 切换到路由:', route.path);
   };
 
+  // 处理删除路由
+  const handleDeleteRoute = async (route: RouteInfo) => {
+    if (!route || route.path === '/') {
+      alert('不能删除首页路由');
+      return;
+    }
+
+    const confirmMessage = `确定要删除路由 "${route.name}" (${route.path}) 吗？\n\n这将删除整个路由文件夹及其所有文件。`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      // 从 filePath 中提取目录路径
+      // 支持嵌套路由：
+      // "TechHero/page.tsx" -> "app/TechHero"
+      // "xxx/yyy/page.tsx" -> "app/xxx/yyy"
+      const pathParts = route.filePath.split('/');
+      const directoryName = pathParts.slice(0, -1).join('/'); // 移除最后的 "page.tsx"
+      const directoryPath = `app/${directoryName}`;
+      
+      const response = await fetch(`/api/sandbox/files?path=${encodeURIComponent(directoryPath)}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // 删除成功，重新加载路由列表
+        const routesResponse = await fetch('/api/sandbox/routes');
+        const routesData = await routesResponse.json();
+        
+        if (routesData.success) {
+          setRoutes(routesData.data.routes);
+          
+          // 如果删除的是当前选中的路由，切换到首页
+          if (selectedRoute?.path === route.path) {
+            const homeRoute = routesData.data.routes.find((r: RouteInfo) => r.path === '/');
+            if (homeRoute) {
+              setSelectedRoute(homeRoute);
+            }
+          }
+        }
+        
+        alert(`路由 "${route.name}" 删除成功！`);
+        console.log('✅ 路由删除成功:', route.path);
+      } else {
+        throw new Error(data.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('❌ 删除路由失败:', error);
+      alert(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
@@ -372,6 +445,7 @@ export default function PreviewPage() {
           routes={routes}
           selectedRoute={selectedRoute}
           onRouteChange={handleRouteChange}
+          onDeleteRoute={handleDeleteRoute}
         />
       </div>
     </div>
