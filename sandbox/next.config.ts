@@ -16,7 +16,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['wayne.beer', 'sandbox.wayne.beer'], // 限制为特定域名
+      allowedOrigins: process.env.NODE_ENV === 'development'
+        ? ['localhost:3000', '127.0.0.1:3000', '192.168.31.161:3000', 'wayne.beer', 'sandbox.wayne.beer'] // 开发环境添加localhost
+        : ['wayne.beer', 'sandbox.wayne.beer'], // 生产环境限制为特定域名
     },
   },
   devIndicators: {
@@ -39,7 +41,9 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: 'https://wayne.beer, https://sandbox.wayne.beer', // 限制为特定域名
+            value: process.env.NODE_ENV === 'development' 
+              ? '*' // 开发环境允许所有域名
+              : 'https://wayne.beer, https://sandbox.wayne.beer', // 生产环境限制为特定域名
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -52,7 +56,9 @@ const nextConfig: NextConfig = {
           // 使用 CSP 替代 X-Frame-Options，允许 iframe 嵌入
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://wayne.beer https://sandbox.wayne.beer",
+            value: process.env.NODE_ENV === 'development'
+              ? "frame-ancestors 'self' http://localhost:3000 http://localhost:3001 http://127.0.0.1:3000 http://192.168.31.161:3000" // 开发环境允许常见localhost端口
+              : "frame-ancestors 'self' https://wayne.beer https://sandbox.wayne.beer", // 生产环境限制
           },
         ],
       },

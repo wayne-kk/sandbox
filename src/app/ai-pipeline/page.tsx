@@ -5,13 +5,16 @@ import { ResetConfirmationDialog } from '@/components/ui/reset-confirmation-dial
 import { 
   RotateCcw, Home, Code, Settings, BarChart3, Zap, Sparkles, Github,
   Workflow, GitBranch, CheckCircle, Clock, AlertCircle, Download,
-  Upload, FileText, Plus, Edit3, Package, Layers, History, Eye
+  Upload, FileText, Plus, Edit3, Package, Layers, History, Eye, 
+  ChevronRight
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function AIPipelinePage() {
   // 重置功能状态
@@ -48,23 +51,12 @@ export default function AIPipelinePage() {
   const [historyScenes, setHistoryScenes] = useState<any[]>([]);
   const [selectedHistoryScene, setSelectedHistoryScene] = useState<any>(null);
   const [historyComponents, setHistoryComponents] = useState<any[]>([]);
-  const [selectedHistoryComponent, setSelectedHistoryComponent] = useState<any>(null);
   const [isLoadingScenes, setIsLoadingScenes] = useState(false);
   const [isLoadingComponents, setIsLoadingComponents] = useState(false);
   const [isDownloadingHistory, setIsDownloadingHistory] = useState(false);
   
-  // 历史组件修改表单状态
-  const [historyComponentForm, setHistoryComponentForm] = useState({
-    scene_tag: '',
-    scene_en: '',
-    component_name: '',
-    stype_tag: '',
-    function_tag: '',
-    component_desc: '',
-    applied_components: '',
-    applicable_pages: ''
-  });
-  const [historyUploadFile, setHistoryUploadFile] = useState<File | null>(null);
+  // 导航路由
+  const router = useRouter();
   
 
   // Pipeline 状态
@@ -414,8 +406,6 @@ export default function AIPipelinePage() {
   const handleSelectHistoryScene = async (scene: any) => {
     setSelectedHistoryScene(scene);
     setHistoryComponents([]); // 清空之前的组件列表
-    setSelectedHistoryComponent(null); // 清空选中的组件
-    clearHistoryComponentForm(); // 清空组件修改表单
     
     // 获取该场景下的组件列表
     if (scene.scene_en) {
@@ -423,88 +413,12 @@ export default function AIPipelinePage() {
     }
   };
 
-  // 处理历史组件选中
-  const handleSelectHistoryComponent = (component: any) => {
-    setSelectedHistoryComponent(component);
-    // 自动填充表单信息，场景标签和英文标识优先使用当前选中的历史场景
-    setHistoryComponentForm({
-      scene_tag: selectedHistoryScene?.scene_en || selectedHistoryScene?.scene || component.scene_tag || '',
-      scene_en: selectedHistoryScene?.scene_en || '',
-      component_name: component.component_name || '',
-      stype_tag: component.stype_tag || '',
-      function_tag: component.function_tag || '',
-      component_desc: component.component_desc || '',
-      applied_components: component.applied_components || '',
-      applicable_pages: component.applicable_pages || ''
-    });
+  // 处理组件详情查看 - 跳转到详情页面
+  const handleViewComponentDetails = (component: any) => {
+    const componentData = encodeURIComponent(JSON.stringify(component));
+    router.push(`/component-detail/${component.id || 'unknown'}?data=${componentData}`);
   };
 
-  // 清除选中的历史组件
-  const clearHistoryComponentForm = () => {
-    setSelectedHistoryComponent(null);
-    setHistoryComponentForm({
-      scene_tag: '',
-      scene_en: '',
-      component_name: '',
-      stype_tag: '',
-      function_tag: '',
-      component_desc: '',
-      applied_components: '',
-      applicable_pages: ''
-    });
-    setHistoryUploadFile(null);
-  };
-
-  // 保存历史组件修改
-  const saveHistoryComponentChanges = async () => {
-    if (!selectedHistoryComponent || !historyComponentForm.component_name.trim()) {
-      alert('请填写组件名称');
-      return;
-    }
-
-    if (!historyUploadFile) {
-      alert('请选择要上传的模板文件');
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      // 使用当前选中历史场景的scene_en作为场景参数
-      formData.append('scene', selectedHistoryScene?.scene_en || selectedHistoryScene?.scene || historyComponentForm.scene_tag || '');
-      formData.append('scene_en', historyComponentForm.scene_en);
-      formData.append('component_name', historyComponentForm.component_name);
-      formData.append('stype_tag', historyComponentForm.stype_tag);
-      formData.append('function_tag', historyComponentForm.function_tag);
-      formData.append('file', historyUploadFile);
-
-      const response = await fetch('http://127.0.0.1:7902/frontend_component/update_by_name', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        showSuccessNotification('组件修改成功！', '历史组件模板已更新');
-        
-        // 更新本地组件列表中的数据
-        const updatedComponents = historyComponents.map(comp => 
-          comp.id === selectedHistoryComponent.id 
-            ? { ...comp, ...historyComponentForm }
-            : comp
-        );
-        setHistoryComponents(updatedComponents);
-        
-        // 清空表单
-        clearHistoryComponentForm();
-      } else {
-        throw new Error(data.error || '修改组件失败');
-      }
-    } catch (error) {
-      console.error('保存历史组件修改失败:', error);
-      alert('❌ 保存修改失败: ' + error);
-    }
-  };
 
   // 页面加载时获取统计信息和历史场景
   useEffect(() => {
@@ -1104,185 +1018,72 @@ export default function AIPipelinePage() {
                           <p>该场景下暂无组件数据</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {historyComponents.map((component: any, index) => (
-                            <div 
-                              key={component.id || index}
-                              onClick={() => handleSelectHistoryComponent(component)}
-                              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
-                                selectedHistoryComponent?.id === component.id
-                                  ? 'border-blue-500 bg-blue-50 shadow-lg transform scale-105'
-                                  : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between mb-3">
-                                <h4 className="font-semibold text-gray-900">{component.component_name}</h4>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-xs">
-                                    {component.scene_tag || 'N/A'}
-                                  </Badge>
-                                  {selectedHistoryComponent?.id === component.id && (
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                                {component.component_desc}
-                              </p>
-                              
-                              <div className="space-y-2 text-xs text-gray-500">
-                                <div>
-                                  <span className="font-medium">适用组件:</span> {component.applied_components}
-                                </div>
-                                <div>
-                                  <span className="font-medium">适用页面:</span> {component.applicable_pages}
-                                </div>
-                                <div className="flex gap-2">
-                                  {component.stype_tag && (
-                                    <Badge variant="secondary" className="text-xs">{component.stype_tag}</Badge>
-                                  )}
-                                  {component.function_tag && (
-                                    <Badge variant="secondary" className="text-xs">{component.function_tag}</Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                        <div className="border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-gray-50">
+                                <TableHead className="font-semibold">组件名称</TableHead>
+                                <TableHead className="font-semibold">场景标签</TableHead>
+                                <TableHead className="font-semibold">组件描述</TableHead>
+                                <TableHead className="font-semibold">风格标签</TableHead>
+                                <TableHead className="font-semibold">功能标签</TableHead>
+                                <TableHead className="font-semibold text-center">详情</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {historyComponents.map((component: any, index) => (
+                                <TableRow
+                                  key={component.id || index}
+                                  className="cursor-pointer hover:bg-blue-50 transition-colors duration-200"
+                                  onClick={() => handleViewComponentDetails(component)}
+                                >
+                                  <TableCell className="font-medium">
+                                    {component.component_name}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className="text-xs">
+                                      {component.scene_tag || 'N/A'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="max-w-md">
+                                    <div className="truncate" title={component.component_desc}>
+                                      {component.component_desc}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    {component.stype_tag && (
+                                      <Badge variant="secondary" className="text-xs">{component.stype_tag}</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {component.function_tag && (
+                                      <Badge variant="secondary" className="text-xs">{component.function_tag}</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleViewComponentDetails(component);
+                                      }}
+                                      className="h-8 px-3 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                    >
+                                      <Eye className="w-4 h-4 mr-1" />
+                                      详情
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </div>
                       )}
                     </CardContent>
                   </Card>
                 )}
 
-                {/* 条件显示的历史组件修改表单 */}
-                {selectedHistoryComponent && (
-                  <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 animate-in slide-in-from-bottom-2 duration-300">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Edit3 className="w-5 h-5 text-green-600" />
-                          <CardTitle>历史组件修改</CardTitle>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={clearHistoryComponentForm}
-                          className="text-gray-500 hover:text-gray-700"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                      <CardDescription>
-                        正在编辑: <span className="font-semibold text-green-600">{selectedHistoryComponent.component_name}</span> - 修改组件的详细信息、标签并上传新的模板文件
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            组件名称 <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={historyComponentForm.component_name}
-                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, component_name: e.target.value}))}
-                            placeholder="组件名称"
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            场景标签 <span className="text-gray-400">(自动填充)</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={historyComponentForm.scene_tag}
-                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, scene_tag: e.target.value}))}
-                            placeholder="场景标签"
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm bg-gray-50"
-                            readOnly
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            场景英文标识 <span className="text-gray-400">(自动填充)</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={historyComponentForm.scene_en}
-                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, scene_en: e.target.value}))}
-                            placeholder="场景英文标识"
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm bg-gray-50"
-                            readOnly
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            风格标签 <span className="text-green-600">(可修改)</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={historyComponentForm.stype_tag}
-                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, stype_tag: e.target.value}))}
-                            placeholder="现代简约, 商务风格..."
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            功能标签 <span className="text-green-600">(可修改)</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={historyComponentForm.function_tag}
-                            onChange={(e) => setHistoryComponentForm(prev => ({...prev, function_tag: e.target.value}))}
-                            placeholder="交互性, 数据展示..."
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          模板文件 <span className="text-red-500">*</span> <span className="text-green-600">(支持 .zip, .tsx, .ts, .jsx, .js 文件)</span>
-                        </label>
-                        <input
-                          type="file"
-                          accept=".zip,.tsx,.ts,.jsx,.js"
-                          onChange={(e) => setHistoryUploadFile(e.target.files?.[0] || null)}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                        />
-                        {historyUploadFile && (
-                          <div className="mt-2 text-xs text-gray-600">
-                            已选择文件: <span className="font-medium">{historyUploadFile.name}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex gap-3 pt-4">
-                        <Button
-                          onClick={saveHistoryComponentChanges}
-                          disabled={!historyComponentForm.component_name.trim() || !historyUploadFile}
-                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          保存修改
-                        </Button>
-                        <Button
-                          onClick={clearHistoryComponentForm}
-                          variant="outline"
-                          className="border-gray-300 text-gray-600 hover:bg-gray-50"
-                        >
-                          取消编辑
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
               </TabsContent>
               
               <TabsContent value="monitoring" className="space-y-6">
@@ -1389,6 +1190,7 @@ export default function AIPipelinePage() {
         onConfirm={resetSandbox}
         isResetting={isResetting}
       />
+
     </div>
   );
 }
