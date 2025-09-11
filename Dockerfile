@@ -29,7 +29,7 @@ RUN mkdir -p /app/.cache/pnpm
 
 # 安装依赖（利用Docker层缓存）
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile --prefer-offline
+RUN pnpm install --frozen-lockfile --prefer-offline --no-optional
 
 # 复制配置文件（这些文件变更较少，可以单独缓存）
 COPY next.config.ts ./
@@ -64,12 +64,12 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # 复制构建产物和依赖（避免重复安装）
-COPY --from=base /app/public ./public
-COPY --from=base /app/.next/standalone ./
-COPY --from=base /app/.next/static ./.next/static
-COPY --from=base /app/prisma ./prisma
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/package.json ./package.json
+COPY --from=base --chown=nextjs:nodejs /app/public ./public
+COPY --from=base --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=base --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=base --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=base --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=base --chown=nextjs:nodejs /app/package.json ./package.json
 
 RUN mkdir -p /app/data /app/sandbox && \
     chown -R nextjs:nodejs /app/data /app/sandbox

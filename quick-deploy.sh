@@ -1,11 +1,112 @@
 #!/bin/bash
 
+# 配置
+PROJECT_NAME="V0 Sandbox"
+ENVIRONMENT=${1:-"production"}
+FEISHU_WEBHOOK_URL=${FEISHU_WEBHOOK_URL:-""}
+APP_URL=${APP_URL:-"http://localhost:3000"}
+
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 日志函数
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# 发送飞书通知
+send_feishu_notification() {
+    local status=$1
+    local error_message=${2:-""}
+    local duration=${3:-0}
+    
+    if [ -z "$FEISHU_WEBHOOK_URL" ]; then
+        log_warning "飞书 Webhook URL 未配置，跳过通知"
+        return 0
+    fi
+    
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local url=""
+    
+    if [ "$status" = "success" ]; then
+        url="$DISPLAY_URL"
+    fi
+    
+    local payload=$(cat <<EOF
+{
+    "status": "$status",
+    "project": "$PROJECT_NAME",
+    "environment": "$ENVIRONMENT",
+    "duration": $duration,
+    "error": "$error_message",
+    "url": "$url",
+    "timestamp": "$timestamp"
+}
+EOF
+)
+    
+    log_info "发送飞书通知: $status"
+    
+    local response=$(curl -s -X POST "$APP_URL/api/feishu/notify" \
+        -H "Content-Type: application/json" \
+        -d "$payload" 2>/dev/null || echo '{"success": false, "error": "请求失败"}')
+    
+    local success=$(echo "$response" | jq -r '.success // false' 2>/dev/null || echo "false")
+    
+    if [ "$success" = "true" ]; then
+        log_success "飞书通知发送成功"
+    else
+        log_error "飞书通知发送失败: $response"
+    fi
+}
+
 echo "⚡ V0 Sandbox 快速部署"
 echo "===================="
 
 # 获取服务器IP
 SERVER_IP=$(curl -s ifconfig.me || curl -s ipinfo.io/ip || echo "localhost")
 echo "服务器IP: $SERVER_IP"
+
+# 设置 APP_URL 和显示地址
+if [ "$APP_URL" = "http://localhost:3000" ]; then
+    APP_URL="http://$SERVER_IP:3000"
+fi
+
+# 获取显示地址（优先使用域名）
+DISPLAY_URL=""
+if [ -n "$EXTERNAL_DOMAIN" ]; then
+    # 使用配置的域名
+    if [ "$EXTERNAL_PROTOCOL" = "https" ]; then
+        DISPLAY_URL="https://$EXTERNAL_DOMAIN"
+    else
+        DISPLAY_URL="http://$EXTERNAL_DOMAIN"
+    fi
+    if [ -n "$EXTERNAL_PORT" ] && [ "$EXTERNAL_PORT" != "80" ] && [ "$EXTERNAL_PORT" != "443" ]; then
+        DISPLAY_URL="$DISPLAY_URL:$EXTERNAL_PORT"
+    fi
+elif [ -n "$SERVER_HOST" ] && [ "$SERVER_HOST" != "localhost" ]; then
+    # 使用 SERVER_HOST 配置
+    DISPLAY_URL="http://$SERVER_HOST:3000"
+else
+    # 使用服务器 IP
+    DISPLAY_URL="http://$SERVER_IP:3000"
+fi
 
 # 检查Docker
 if ! command -v docker &> /dev/null; then
@@ -45,6 +146,12 @@ if git diff HEAD~1 --name-only 2>/dev/null | grep -q "sandbox/"; then
     NEED_REBUILD=true
 fi
 
+# 记录部署开始时间
+DEPLOY_START_TIME=$(date +%s)
+
+# 发送部署开始通知
+send_feishu_notification "started"
+
 # 创建环境变量文件（如果不存在）
 if [ ! -f ".env.local" ]; then
     echo "📝 创建环境变量文件..."
@@ -54,6 +161,9 @@ NODE_ENV=production
 NEXT_PUBLIC_NODE_ENV=production
 SERVER_HOST=$SERVER_IP
 NEXT_PUBLIC_SERVER_HOST=$SERVER_IP
+EXTERNAL_DOMAIN=wayne.beer
+EXTERNAL_PROTOCOL=https
+EXTERNAL_PORT=
 SANDBOX_PREVIEW_URL=https://sandbox.wayne.beer/
 NEXT_PUBLIC_SANDBOX_PREVIEW_URL=https://sandbox.wayne.beer/
 DATABASE_URL=file:./data/prod.db
@@ -64,6 +174,7 @@ REQUIRMENT_DIFY_API_KEY=app-YgkdhmiPidrzl8e1bbaIdNrb
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
 NEXTAUTH_URL=http://$SERVER_IP:3000
 NEXT_PUBLIC_APP_URL=http://$SERVER_IP:3000
+FEISHU_WEBHOOK_URL=$FEISHU_WEBHOOK_URL
 http_proxy=
 https_proxy=
 HTTP_PROXY=
@@ -104,15 +215,21 @@ fi
 if [ "$NEED_REBUILD" = true ]; then
     echo "🔨 重新构建应用..."
     
+    # 启用 BuildKit 优化
+    export DOCKER_BUILDKIT=1
+    export COMPOSE_DOCKER_CLI_BUILD=1
+    
     # 如果检测到sandbox变化，进行完全重建
     if git diff HEAD~1 --name-only 2>/dev/null | grep -q "sandbox/"; then
         echo "🧹 检测到sandbox变化，进行完全重建..."
         docker system prune -f
         docker builder prune -f
-        docker rmi v0-sandbox-app 2>/dev/null || true
+        docker rmi v0-sandbox-app v0-sandbox-sandbox 2>/dev/null || true
+        docker compose build --no-cache
+    else
+        echo "⚡ 使用缓存构建..."
+        docker compose build
     fi
-    
-    docker compose build --no-cache
 else
     echo "⚡ 使用现有镜像，跳过构建"
 fi
@@ -164,11 +281,20 @@ fi
 # 记录部署时间
 touch .last-deploy
 
+# 计算部署耗时
+DEPLOY_END_TIME=$(date +%s)
+DEPLOY_DURATION=$((DEPLOY_END_TIME - DEPLOY_START_TIME))000  # 转换为毫秒
+
+# 发送部署成功通知
+send_feishu_notification "success" "" $DEPLOY_DURATION
+
 echo ""
 echo "🎉 快速部署完成！"
 echo "📱 访问地址:"
-echo "  - 主应用: http://$SERVER_IP:3000"
-echo "  - Sandbox预览: http://$SERVER_IP:3000/sandbox"
+echo "  - 主应用: $DISPLAY_URL"
+echo "  - Sandbox预览: $DISPLAY_URL/sandbox"
+echo ""
+echo "⏱️ 部署耗时: $((DEPLOY_DURATION / 1000)) 秒"
 echo ""
 echo "🔧 管理命令:"
 echo "  - 查看日志: docker compose logs -f"
@@ -180,3 +306,24 @@ echo "  - 自动检测代码变化并重新构建"
 echo "  - 检测到sandbox变化时进行完全重建"
 echo "  - 自动修复sandbox配置问题"
 echo "  - 验证sandbox代码更新"
+echo "  - 飞书通知部署状态"
+
+# 错误处理函数
+handle_deployment_error() {
+    local error_code=$?
+    local error_message="部署过程中发生错误，退出码: $error_code"
+    
+    # 计算部署耗时
+    local end_time=$(date +%s)
+    local duration=$((end_time - DEPLOY_START_TIME))000
+    
+    log_error "$error_message"
+    
+    # 发送部署失败通知
+    send_feishu_notification "failed" "$error_message" $duration
+    
+    exit $error_code
+}
+
+# 设置错误处理
+trap 'handle_deployment_error' ERR

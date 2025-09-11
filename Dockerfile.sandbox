@@ -1,31 +1,56 @@
-# Sandbox 专用 Dockerfile
-FROM node:20-alpine
+# Sandbox 专用 Dockerfile - 优化版本
+FROM node:20-alpine AS base
+
+# 安装系统依赖
+RUN apk add --no-cache \
+    curl \
+    openssl \
+    git \
+    ca-certificates \
+    bash
 
 WORKDIR /app
 
-# 复制 sandbox 目录
-COPY sandbox/ .
-
-# 安装pnpm并设置配置
+# 安装 pnpm 并设置配置
 RUN npm install -g pnpm
-RUN pnpm config set registry https://registry.npmmirror.com
-RUN pnpm config set fetch-timeout 300000
-RUN pnpm config set fetch-retry-mintimeout 20000
-RUN pnpm config set fetch-retry-maxtimeout 120000
-RUN pnpm install
+RUN pnpm config set registry https://registry.npmmirror.com && \
+    pnpm config set fetch-timeout 300000 && \
+    pnpm config set fetch-retry-mintimeout 20000 && \
+    pnpm config set fetch-retry-maxtimeout 120000 && \
+    pnpm config set store-dir /app/.cache/pnpm/store && \
+    pnpm config set cache-dir /app/.cache/pnpm/cache
+
+# 设置缓存目录
+ENV PNPM_CACHE_DIR=/app/.cache/pnpm
+RUN mkdir -p /app/.cache/pnpm
 
 # 创建非root用户
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# 设置权限
-RUN chown -R nextjs:nodejs /app
+# 先复制 package.json 和 lock 文件（利用 Docker 层缓存）
+COPY --chown=nextjs:nodejs sandbox/package.json sandbox/pnpm-lock.yaml* ./
+
+# 安装依赖（这一层会被缓存，除非 package.json 改变）
+RUN pnpm install --frozen-lockfile --prefer-offline
+
+# 复制配置文件（这些文件变更较少）
+COPY --chown=nextjs:nodejs sandbox/next.config.ts sandbox/tsconfig.json sandbox/tailwind.config.js sandbox/postcss.config.mjs sandbox/components.json ./
+
+# 复制源代码（这些文件变更频繁，放在最后）
+COPY --chown=nextjs:nodejs sandbox/app/ ./app/
+COPY --chown=nextjs:nodejs sandbox/components/ ./components/
+COPY --chown=nextjs:nodejs sandbox/lib/ ./lib/
+COPY --chown=nextjs:nodejs sandbox/public/ ./public/
+
+# 切换到非root用户
 USER nextjs
 
 # 环境变量
 ENV NODE_ENV=development
 ENV PORT=3100
 ENV HOSTNAME="0.0.0.0"
+ENV NEXT_TELEMETRY_DISABLED=1
 
 EXPOSE 3100
 

@@ -35,15 +35,27 @@ const nextConfig: NextConfig = {
     return config;
   },
   async headers() {
+    // 检查是否为开发环境
+    const isDevelopment = process.env.NODE_ENV === 'development' ||
+      process.env.NEXT_PUBLIC_NODE_ENV === 'development' ||
+      !process.env.NODE_ENV;
+
+    // 根据环境设置不同的 CSP 配置
+    const frameAncestors = isDevelopment
+      ? "'self' http://localhost:* http://127.0.0.1:*"  // 开发环境允许 localhost
+      : "'self' https://wayne.beer https://sandbox.wayne.beer";  // 生产环境限制特定域名
+
+    const corsOrigin = isDevelopment
+      ? 'http://localhost:3000, http://127.0.0.1:3000'  // 开发环境允许 localhost
+      : 'https://wayne.beer, https://sandbox.wayne.beer';  // 生产环境限制特定域名
+
     return [
       {
         source: '/(.*)',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: process.env.NODE_ENV === 'development' 
-              ? '*' // 开发环境允许所有域名
-              : 'https://wayne.beer, https://sandbox.wayne.beer', // 生产环境限制为特定域名
+            value: corsOrigin,
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -56,9 +68,7 @@ const nextConfig: NextConfig = {
           // 使用 CSP 替代 X-Frame-Options，允许 iframe 嵌入
           {
             key: 'Content-Security-Policy',
-            value: process.env.NODE_ENV === 'development'
-              ? "frame-ancestors 'self' http://localhost:3000 http://localhost:3001 http://127.0.0.1:3000 http://192.168.31.161:3000" // 开发环境允许常见localhost端口
-              : "frame-ancestors 'self' https://wayne.beer https://sandbox.wayne.beer", // 生产环境限制
+            value: `frame-ancestors ${frameAncestors}`,
           },
         ],
       },
