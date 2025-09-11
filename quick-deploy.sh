@@ -149,9 +149,6 @@ fi
 # 记录部署开始时间
 DEPLOY_START_TIME=$(date +%s)
 
-# 发送部署开始通知
-send_feishu_notification "started"
-
 # 创建环境变量文件（如果不存在）
 if [ ! -f ".env.local" ]; then
     echo "📝 创建环境变量文件..."
@@ -183,6 +180,14 @@ no_proxy=152.136.41.186
 NO_PROXY=152.136.41.186
 EOF
 fi
+
+# 加载环境变量（如果存在）
+if [ -f ".env.local" ]; then
+    export $(grep -v '^#' .env.local | xargs)
+fi
+
+# 发送部署开始通知
+send_feishu_notification "started"
 
 # 停止旧容器
 echo "🛑 停止旧容器..."

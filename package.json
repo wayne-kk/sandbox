@@ -31,8 +31,7 @@
     "clean:all": "rm -rf .next node_modules/.cache node_modules && npm install",
     "clean:sandbox": "rm -rf temp/*",
     "prebuild": "npm run clean:sandbox",
-    "postbuild": "echo 'Build completed. Temp directories excluded, sandbox template included.'",
-    "build:test": "./scripts/build-test.sh"
+    "postbuild": "echo 'Build completed. Temp directories excluded, sandbox template included.'"
   },
   "dependencies": {
     "@azure/openai": "^2.0.0",
