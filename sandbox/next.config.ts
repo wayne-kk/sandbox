@@ -16,7 +16,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['wayne.beer', 'sandbox.wayne.beer'], // 限制为特定域名
+      allowedOrigins: process.env.NODE_ENV === 'development'
+        ? ['localhost:3000', '127.0.0.1:3000', '192.168.31.161:3000', 'wayne.beer', 'sandbox.wayne.beer'] // 开发环境添加localhost
+        : ['wayne.beer', 'sandbox.wayne.beer'], // 生产环境限制为特定域名
     },
   },
   devIndicators: {
