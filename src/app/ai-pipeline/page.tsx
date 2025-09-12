@@ -23,7 +23,7 @@ export default function AIPipelinePage() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   
   // 页面状态
-  const [activeTab, setActiveTab] = useState('templates');
+  const [activeTab, setActiveTab] = useState('history');
   const [stats, setStats] = useState({
     totalPipelines: 0,
     activePipelines: 0,
@@ -304,9 +304,13 @@ export default function AIPipelinePage() {
   const getSceneList = async () => {
     setIsLoadingScenes(true);
     try {
-      const response = await fetch('http://127.0.0.1:7902/frontend_component/get_scene_list', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+      const response = await fetch('https://autopilottest.koudingvip.com/api/zaki/proxy/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: '/frontend_component/get_scene_list',
+          method: 'GET'
+        })
       });
 
       const data = await response.json();
